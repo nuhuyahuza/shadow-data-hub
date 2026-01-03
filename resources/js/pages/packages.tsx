@@ -17,7 +17,7 @@ interface DataPackage {
     network: string;
     name: string;
     data_size: string;
-    price: number;
+    price: number | string;
     validity: string;
 }
 
@@ -72,7 +72,7 @@ export default function Packages() {
                                                     </span>
                                                 </div>
                                                 <p className="text-2xl font-bold">
-                                                    GHS {pkg.price.toFixed(2)}
+                                                    GHS {Number(pkg.price).toFixed(2)}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
                                                     {pkg.validity}

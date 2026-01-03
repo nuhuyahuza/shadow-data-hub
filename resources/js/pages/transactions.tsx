@@ -20,7 +20,7 @@ interface Transaction {
     network: string | null;
     package_name: string | null;
     phone_number: string | null;
-    amount: number;
+    amount: number | string;
     status: string;
     created_at: string;
 }
@@ -117,7 +117,7 @@ export default function Transactions() {
                                             </p>
                                         </div>
                                         <span className="font-semibold">
-                                            GHS {transaction.amount.toFixed(2)}
+                                            GHS {Number(transaction.amount).toFixed(2)}
                                         </span>
                                     </div>
                                 ))}

@@ -1,4 +1,4 @@
-import { dashboard, login, phoneLogin, buyData } from '@/routes';
+import { dashboard, login, phoneLogin } from '@/routes';
 import { type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
@@ -68,17 +68,8 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
     }, [filteredPackages]);
 
     const handlePackageSelect = (pkg: DataPackage) => {
-        if (!auth.user) {
-            // Redirect to login with package info
-            router.visit(phoneLogin(), {
-                data: { packageId: pkg.id },
-            });
-        } else {
-            // Redirect to buy-data page with package pre-selected
-            router.visit(buyData(), {
-                data: { packageId: pkg.id, network: pkg.network },
-            });
-        }
+        // All users (guests and authenticated) go to checkout
+        router.visit(`/checkout/${pkg.id}`);
     };
 
     const networks = ['mtn', 'telecel', 'airteltigo'] as const;
@@ -267,7 +258,7 @@ interface PackageCardProps {
     isAuthenticated: boolean;
 }
 
-function PackageCard({ pkg, onSelect, isAuthenticated }: PackageCardProps) {
+function PackageCard({ pkg, onSelect }: PackageCardProps) {
     return (
         <div className="group relative overflow-hidden rounded-lg border border-[#19140035] bg-white transition-all hover:shadow-lg dark:border-[#3E3E3A] dark:bg-[#161615]">
             <div className="p-6">
@@ -299,9 +290,9 @@ function PackageCard({ pkg, onSelect, isAuthenticated }: PackageCardProps) {
                 <Button
                     onClick={() => onSelect(pkg)}
                     className="w-full"
-                    variant={isAuthenticated ? 'default' : 'outline'}
+                    variant="default"
                 >
-                    {isAuthenticated ? 'Buy Now' : 'Sign In to Buy'}
+                    Buy Now
                 </Button>
             </div>
         </div>

@@ -14,7 +14,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<{
+        total_users: number;
+        total_revenue: number | string;
+        total_profit: number | string;
+        vendor_balance: number | string;
+    }>({
         total_users: 0,
         total_revenue: 0,
         total_profit: 0,
@@ -54,17 +59,17 @@ export default function AdminDashboard() {
                                 />
                                 <StatsCard
                                     title="Total Revenue"
-                                    value={`GHS ${stats.total_revenue.toFixed(2)}`}
+                                    value={`GHS ${Number(stats.total_revenue).toFixed(2)}`}
                                     icon={DollarSign}
                                 />
                                 <StatsCard
                                     title="Total Profit"
-                                    value={`GHS ${stats.total_profit.toFixed(2)}`}
+                                    value={`GHS ${Number(stats.total_profit).toFixed(2)}`}
                                     icon={TrendingUp}
                                 />
                                 <StatsCard
                                     title="Vendor Balance"
-                                    value={`GHS ${stats.vendor_balance.toFixed(2)}`}
+                                    value={`GHS ${Number(stats.vendor_balance).toFixed(2)}`}
                                     icon={Shield}
                                 />
                             </div>

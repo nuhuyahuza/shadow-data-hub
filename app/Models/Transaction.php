@@ -24,6 +24,9 @@ class Transaction extends Model
         'status',
         'vendor_response',
         'vendor_reference',
+        'guest_phone',
+        'payment_method',
+        'payment_phone',
     ];
 
     /**

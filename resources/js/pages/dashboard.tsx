@@ -16,11 +16,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface DashboardProps {
     wallet: {
-        balance: number;
-        total_funded: number;
-        total_spent: number;
+        balance: number | string;
+        total_funded: number | string;
+        total_spent: number | string;
     };
-    totalDataPurchased: number;
+    totalDataPurchased: number | string;
     totalTransactions: number;
     recentTransactions: Array<{
         id: number;
@@ -56,7 +56,7 @@ export default function Dashboard({
                     <div className="grid gap-4">
                         <StatsCard
                             title="Total Data Purchased"
-                            value={`GHS ${totalDataPurchased.toFixed(2)}`}
+                            value={`GHS ${Number(totalDataPurchased).toFixed(2)}`}
                             icon={TrendingUp}
                             description="All successful purchases"
                         />

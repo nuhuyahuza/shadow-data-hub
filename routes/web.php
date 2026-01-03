@@ -28,6 +28,12 @@ Route::get('auth/otp-verify', function () {
     return Inertia::render('auth/otp-verify');
 })->name('otp-verify')->middleware('guest');
 
+// Guest checkout route
+Route::get('checkout/{packageId}', function ($packageId) {
+    $package = \App\Models\DataPackage::findOrFail($packageId);
+    return Inertia::render('checkout', ['package' => $package]);
+})->name('checkout');
+
 // OTP API endpoints (using web middleware for session support)
 Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
     Route::post('otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'send'])->middleware('throttle:3,5');

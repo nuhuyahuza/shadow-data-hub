@@ -25,9 +25,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface WalletProps {
     wallet: {
-        balance: number;
-        total_funded: number;
-        total_spent: number;
+        balance: number | string;
+        total_funded: number | string;
+        total_spent: number | string;
     };
 }
 
@@ -59,20 +59,20 @@ export default function WalletPage({ wallet }: WalletProps) {
                             <div>
                                 <p className="text-sm opacity-90">Current Balance</p>
                                 <p className="text-4xl font-bold">
-                                    GHS {wallet.balance.toFixed(2)}
+                                    GHS {Number(wallet.balance).toFixed(2)}
                                 </p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
                                 <div>
                                     <p className="text-xs opacity-75">Total Funded</p>
                                     <p className="text-xl font-semibold">
-                                        GHS {wallet.total_funded.toFixed(2)}
+                                        GHS {Number(wallet.total_funded).toFixed(2)}
                                     </p>
                                 </div>
                                 <div>
                                     <p className="text-xs opacity-75">Total Spent</p>
                                     <p className="text-xl font-semibold">
-                                        GHS {wallet.total_spent.toFixed(2)}
+                                        GHS {Number(wallet.total_spent).toFixed(2)}
                                     </p>
                                 </div>
                             </div>

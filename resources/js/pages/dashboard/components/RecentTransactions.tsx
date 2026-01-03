@@ -11,7 +11,7 @@ interface Transaction {
     network: string | null;
     package_name: string | null;
     phone_number: string | null;
-    amount: number;
+    amount: number | string;
     status: string;
     created_at: string;
 }
@@ -109,7 +109,7 @@ export default function RecentTransactions({
                                 </div>
                                 <div className="text-right">
                                     <p className="font-semibold">
-                                        GHS {transaction.amount.toFixed(2)}
+                                        GHS {Number(transaction.amount).toFixed(2)}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         {transaction.reference.slice(-8)}

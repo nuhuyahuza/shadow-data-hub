@@ -10,7 +10,7 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
-import { verifyOtp, formatPhoneForDisplay, type ApiError } from '@/services/authService';
+import { verifyOtp, formatPhoneForDisplay } from '@/services/authService';
 
 export default function OtpVerify() {
     const [code, setCode] = useState('');
@@ -131,7 +131,7 @@ export default function OtpVerify() {
                         </InputOTP>
                     </div>
 
-                    <InputError message={error} />
+                    <InputError message={error || undefined} />
 
                     {timeLeft > 0 && (
                         <p className="text-center text-sm text-muted-foreground">

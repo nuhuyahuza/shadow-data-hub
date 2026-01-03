@@ -4,9 +4,9 @@ import { Wallet } from 'lucide-react';
 import { router } from '@inertiajs/react';
 
 interface WalletCardProps {
-    balance: number;
-    totalFunded: number;
-    totalSpent: number;
+    balance: number | string;
+    totalFunded: number | string;
+    totalSpent: number | string;
 }
 
 export default function WalletCard({
@@ -27,20 +27,20 @@ export default function WalletCard({
                     <div>
                         <p className="text-sm opacity-90">Available Balance</p>
                         <p className="text-3xl font-bold">
-                            GHS {balance.toFixed(2)}
+                            GHS {Number(balance).toFixed(2)}
                         </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
                         <div>
                             <p className="text-xs opacity-75">Total Funded</p>
                             <p className="text-lg font-semibold">
-                                GHS {totalFunded.toFixed(2)}
+                                GHS {Number(totalFunded).toFixed(2)}
                             </p>
                         </div>
                         <div>
                             <p className="text-xs opacity-75">Total Spent</p>
                             <p className="text-lg font-semibold">
-                                GHS {totalSpent.toFixed(2)}
+                                GHS {Number(totalSpent).toFixed(2)}
                             </p>
                         </div>
                     </div>

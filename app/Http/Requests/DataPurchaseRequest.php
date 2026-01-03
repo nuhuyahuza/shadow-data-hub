@@ -26,6 +26,8 @@ class DataPurchaseRequest extends FormRequest
             'package_id' => ['required', 'exists:data_packages,id'],
             'network' => ['required', 'string', Rule::in(['mtn', 'telecel', 'airteltigo'])],
             'phone_number' => ['required', 'string', 'regex:/^(\+?233|0)?[0-9]{9}$/'],
+            'payment_method' => ['nullable', 'string', Rule::in(['direct', 'wallet', 'mtn_momo', 'telecel_cash', 'airteltigo_money'])],
+            'payment_phone' => ['nullable', 'string', 'regex:/^(\+?233|0)?[0-9]{9}$/'],
         ];
     }
 
@@ -43,6 +45,8 @@ class DataPurchaseRequest extends FormRequest
             'network.in' => 'Invalid network selected.',
             'phone_number.required' => 'Phone number is required.',
             'phone_number.regex' => 'Please enter a valid Ghana phone number.',
+            'payment_method.in' => 'Invalid payment method selected.',
+            'payment_phone.regex' => 'Please enter a valid Ghana phone number for payment.',
         ];
     }
 }

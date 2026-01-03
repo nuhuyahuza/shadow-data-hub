@@ -9,13 +9,10 @@ import InputError from '@/components/input-error';
 import AuthLayout from '@/layouts/auth-layout';
 import {
     sendOtp,
-    formatPhoneForDisplay,
     detectNetwork,
     getNetworkName,
     getNetworkColor,
-    type ApiError,
 } from '@/services/authService';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function PhoneLogin() {
     const [phone, setPhone] = useState('');
@@ -101,7 +98,7 @@ export default function PhoneLogin() {
                                 </span>
                             </div>
                         )}
-                        <InputError message={error} />
+                        <InputError message={error || undefined} />
                     </div>
 
                     <Button

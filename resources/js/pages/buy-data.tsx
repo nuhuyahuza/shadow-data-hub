@@ -29,7 +29,7 @@ interface DataPackage {
     network: string;
     name: string;
     data_size: string;
-    price: number;
+    price: number | string;
     validity: string;
 }
 
@@ -197,7 +197,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                                         </p>
                                                     </div>
                                                     <p className="text-xl font-bold">
-                                                        GHS {pkg.price.toFixed(2)}
+                                                        GHS {Number(pkg.price).toFixed(2)}
                                                     </p>
                                                 </div>
                                             </CardContent>
@@ -262,7 +262,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                             <div className="flex justify-between">
                                                 <span>Amount:</span>
                                                 <span className="font-bold">
-                                                    GHS {selectedPackage.price.toFixed(2)}
+                                                    GHS {Number(selectedPackage.price).toFixed(2)}
                                                 </span>
                                             </div>
                                         </div>
@@ -299,7 +299,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                         </div>
                                         <div className="flex justify-between font-bold text-lg pt-2 border-t">
                                             <span>Total:</span>
-                                            <span>GHS {selectedPackage.price.toFixed(2)}</span>
+                                            <span>GHS {Number(selectedPackage.price).toFixed(2)}</span>
                                         </div>
                                     </CardContent>
                                 </Card>
