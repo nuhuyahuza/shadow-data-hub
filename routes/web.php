@@ -10,10 +10,52 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+// Auth routes (phone-based OTP)
+Route::get('auth/phone-login', function () {
+    return Inertia::render('auth/phone-login');
+})->name('phone-login')->middleware('guest');
+
+Route::get('auth/otp-verify', function () {
+    return Inertia::render('auth/otp-verify');
+})->name('otp-verify')->middleware('guest');
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('wallet', function () {
+        $user = auth()->user();
+        $walletService = app(\App\Services\WalletService::class);
+        $wallet = $walletService->getWallet($user);
+
+        return Inertia::render('wallet', ['wallet' => $wallet]);
+    })->name('wallet');
+    Route::get('buy-data', function () {
+        return Inertia::render('buy-data');
+    })->name('buy-data');
+    Route::get('packages', function () {
+        return Inertia::render('packages');
+    })->name('packages');
+    Route::get('transactions', function () {
+        return Inertia::render('transactions');
+    })->name('transactions');
+
+    // Admin routes
+    Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->group(function () {
+        Route::get('admin/dashboard', function () {
+            return Inertia::render('admin/dashboard');
+        })->name('admin.dashboard');
+        Route::get('admin/users', function () {
+            return Inertia::render('admin/users');
+        })->name('admin.users');
+        Route::get('admin/packages', function () {
+            return Inertia::render('admin/packages');
+        })->name('admin.packages');
+        Route::get('admin/transactions', function () {
+            return Inertia::render('admin/transactions');
+        })->name('admin.transactions');
+        Route::get('admin/vendor-logs', function () {
+            return Inertia::render('admin/vendor-logs');
+        })->name('admin.vendor-logs');
+    });
 });
 
 require __DIR__.'/settings.php';

@@ -33,11 +33,18 @@ export interface SharedData {
 export interface User {
     id: number;
     name: string;
-    email: string;
+    email: string | null;
+    phone: string | null;
+    role: 'user' | 'agent' | 'admin';
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;
+    wallet?: {
+        balance: number;
+        total_funded: number;
+        total_spent: number;
+    };
     [key: string]: unknown; // This allows for additional properties...
 }

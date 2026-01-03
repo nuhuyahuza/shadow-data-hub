@@ -29,13 +29,23 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $validated = $request->validated();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Format phone number
+        $otpService = app(\App\Services\OtpService::class);
+        if (isset($validated['phone'])) {
+            $validated['phone'] = $otpService->formatPhone($validated['phone']);
         }
 
-        $request->user()->save();
+        // If phone is changing, require OTP verification
+        if (isset($validated['phone']) && $user->phone !== $validated['phone']) {
+            // For now, just update (in production, require OTP verification first)
+            // TODO: Implement OTP verification flow for phone changes
+        }
+
+        $user->fill($validated);
+        $user->save();
 
         return to_route('profile.edit');
     }
@@ -45,10 +55,7 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
+        // No password required for OTP-based auth
         $user = $request->user();
 
         Auth::logout();
