@@ -1,13 +1,7 @@
 <?php
 
-use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
-
-Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
-    Route::post('otp/send', [OtpController::class, 'send'])->middleware('throttle:3,5');
-    Route::post('otp/verify', [OtpController::class, 'verify'])->middleware('throttle:5,1');
-});
 
 Route::prefix('packages')->group(function () {
     Route::get('/', [\App\Http\Controllers\DataPackageController::class, 'index']);

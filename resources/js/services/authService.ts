@@ -1,4 +1,5 @@
-const API_BASE = '/api';
+// Use web routes for OTP (session-based auth) instead of API routes
+const API_BASE = '';
 
 export interface SendOtpResponse {
     message: string;
@@ -113,7 +114,9 @@ export async function sendOtp(phone: string): Promise<SendOtpResponse> {
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
         },
+        credentials: 'include', // Include cookies for session
         body: JSON.stringify({ phone }),
     });
 
@@ -137,7 +140,9 @@ export async function verifyOtp(
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
         },
+        credentials: 'include', // Include cookies for session - CRITICAL for authentication
         body: JSON.stringify({ phone, code }),
     });
 

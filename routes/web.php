@@ -28,6 +28,12 @@ Route::get('auth/otp-verify', function () {
     return Inertia::render('auth/otp-verify');
 })->name('otp-verify')->middleware('guest');
 
+// OTP API endpoints (using web middleware for session support)
+Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
+    Route::post('otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'send'])->middleware('throttle:3,5');
+    Route::post('otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verify'])->middleware('throttle:5,1');
+});
+
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::get('wallet', function (\Illuminate\Http\Request $request) {

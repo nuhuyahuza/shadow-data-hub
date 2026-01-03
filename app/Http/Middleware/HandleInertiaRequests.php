@@ -48,4 +48,22 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
+
+    /**
+     * Handle unauthenticated responses for Inertia.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function handle($request, \Closure $next)
+    {
+        $response = parent::handle($request, $next);
+
+        // If the response is a redirect to login, redirect to phone-login instead
+        if ($response->isRedirect() && $response->getTargetUrl() === url('/login')) {
+            return redirect()->route('phone-login');
+        }
+
+        return $response;
+    }
 }

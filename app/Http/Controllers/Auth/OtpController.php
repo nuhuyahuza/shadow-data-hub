@@ -77,8 +77,11 @@ class OtpController extends Controller
             $user->load('wallet');
         }
 
-        // Log user in
-        Auth::login($user);
+        // Log user in and remember session
+        Auth::login($user, true); // true = remember the user
+
+        // Regenerate session to prevent session fixation
+        $request->session()->regenerate();
 
         return response()->json([
             'message' => 'Authentication successful',
