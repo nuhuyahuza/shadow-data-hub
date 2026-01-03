@@ -77,6 +77,7 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
     const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
     const iframeContainerRef = useRef<HTMLDivElement>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const isPollingRef = useRef<boolean>(false);
 
     // Load Paystack script
     useEffect(() => {
@@ -113,7 +114,8 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
             setLoading(false);
             setTransactionReference(null);
             setPaymentUrl(null);
-            // Clear polling interval
+            // Stop polling
+            isPollingRef.current = false;
             if (pollIntervalRef.current) {
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
@@ -123,9 +125,23 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
 
     // Poll for payment status when in payment step
     useEffect(() => {
-        if (step === 'payment' && transactionReference) {
-            // Start polling immediately, then every 2 seconds
+        // Clear any existing interval first
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+        isPollingRef.current = false;
+
+        if (step === 'payment' && transactionReference && !isPollingRef.current) {
+            isPollingRef.current = true;
+
+            // Start polling immediately, then every 3 seconds
             const pollStatus = async () => {
+                // Prevent concurrent requests
+                if (!isPollingRef.current) {
+                    return;
+                }
+
                 try {
                     const checkResponse = await fetch(
                         `/api/guest/payment/status/${transactionReference}`,
@@ -136,12 +152,16 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                     if (checkResponse.ok) {
                         const statusData = await checkResponse.json();
                         if (statusData.status === 'success') {
+                            // Stop polling
+                            isPollingRef.current = false;
                             if (pollIntervalRef.current) {
                                 clearInterval(pollIntervalRef.current);
                                 pollIntervalRef.current = null;
                             }
                             setStep('success');
                         } else if (statusData.status === 'failed') {
+                            // Stop polling
+                            isPollingRef.current = false;
                             if (pollIntervalRef.current) {
                                 clearInterval(pollIntervalRef.current);
                                 pollIntervalRef.current = null;
@@ -149,6 +169,7 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                             setError('Payment failed. Please try again.');
                             setStep('phone');
                         }
+                        // If still pending, continue polling
                     }
                 } catch (err) {
                     // Ignore polling errors, but log them
@@ -156,17 +177,21 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                 }
             };
 
-            // Poll immediately, then every 2 seconds
+            // Poll immediately, then every 3 seconds (reduced frequency)
             pollStatus();
-            pollIntervalRef.current = setInterval(pollStatus, 2000);
+            pollIntervalRef.current = setInterval(pollStatus, 3000);
 
-            // Cleanup on unmount
+            // Cleanup on unmount or when dependencies change
             return () => {
+                isPollingRef.current = false;
                 if (pollIntervalRef.current) {
                     clearInterval(pollIntervalRef.current);
                     pollIntervalRef.current = null;
                 }
             };
+        } else {
+            // Not in payment step, ensure polling is stopped
+            isPollingRef.current = false;
         }
     }, [step, transactionReference]);
 

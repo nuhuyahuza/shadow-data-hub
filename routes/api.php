@@ -12,7 +12,9 @@ Route::prefix('packages')->group(function () {
 Route::prefix('guest')->middleware('throttle:20,1')->group(function () {
     Route::post('purchase', [\App\Http\Controllers\GuestPurchaseController::class, 'store']);
     Route::post('payment/webhook', [\App\Http\Controllers\GuestPurchaseController::class, 'webhook']);
-    Route::get('payment/status/{reference}', [\App\Http\Controllers\GuestPurchaseController::class, 'checkStatus']);
+    // Rate limit status checks to prevent excessive polling
+    Route::get('payment/status/{reference}', [\App\Http\Controllers\GuestPurchaseController::class, 'checkStatus'])
+        ->middleware('throttle:30,1'); // 30 requests per minute per IP
 });
 
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
