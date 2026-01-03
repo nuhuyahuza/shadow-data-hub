@@ -124,7 +124,8 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
     // Poll for payment status when in payment step
     useEffect(() => {
         if (step === 'payment' && transactionReference) {
-            pollIntervalRef.current = setInterval(async () => {
+            // Start polling immediately, then every 2 seconds
+            const pollStatus = async () => {
                 try {
                     const checkResponse = await fetch(
                         `/api/guest/payment/status/${transactionReference}`,
@@ -150,9 +151,14 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                         }
                     }
                 } catch (err) {
-                    // Ignore polling errors
+                    // Ignore polling errors, but log them
+                    console.error('Payment status check error:', err);
                 }
-            }, 3000); // Poll every 3 seconds
+            };
+
+            // Poll immediately, then every 2 seconds
+            pollStatus();
+            pollIntervalRef.current = setInterval(pollStatus, 2000);
 
             // Cleanup on unmount
             return () => {
@@ -374,6 +380,36 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                                     allow="payment *"
                                     id="paystack-iframe"
                                     style={{ minHeight: '500px' }}
+                                    onLoad={() => {
+                                        // Listen for URL changes in iframe to detect payment completion
+                                        const iframe = document.getElementById('paystack-iframe') as HTMLIFrameElement;
+                                        if (iframe) {
+                                            try {
+                                                // Check if iframe URL contains success indicators
+                                                const iframeSrc = iframe.src;
+                                                if (iframeSrc.includes('success') || iframeSrc.includes('callback')) {
+                                                    // Payment might be complete, check status
+                                                    if (transactionReference) {
+                                                        fetch(`/api/guest/payment/status/${transactionReference}`, {
+                                                            credentials: 'include',
+                                                        })
+                                                            .then((res) => res.json())
+                                                            .then((data) => {
+                                                                if (data.status === 'success') {
+                                                                    setStep('success');
+                                                                }
+                                                            })
+                                                            .catch(() => {
+                                                                // Ignore errors
+                                                            });
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                // Cross-origin restrictions - this is expected
+                                                // We'll rely on polling instead
+                                            }
+                                        }
+                                    }}
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-[500px]">

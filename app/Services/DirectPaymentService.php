@@ -53,20 +53,30 @@ class DirectPaymentService
 
         // Initialize Paystack transaction via API
         $paystackUrl = 'https://api.paystack.co/transaction/initialize';
-        $callbackUrl = url('/api/guest/payment/webhook');
+        // For development: use null to avoid localhost blocking
+        // For production: use a public URL
+        // Webhooks will handle the actual status update
+        $appUrl = config('app.url');
+        $callbackUrl = (str_contains($appUrl, 'localhost') || str_contains($appUrl, '127.0.0.1'))
+            ? null // Don't set callback URL for localhost to avoid browser blocking
+            : $appUrl.'/payment/success';
 
         $paystackData = [
             'email' => $phone.'@datahub.gh', // Use phone as email identifier
             'amount' => $amount * 100, // Convert to pesewas
             'currency' => 'GHS',
             'reference' => $reference,
-            'callback_url' => $callbackUrl,
             'metadata' => [
                 'recipient_phone' => $data['phone_number'] ?? null,
                 'package_name' => $data['package_name'] ?? null,
                 'transaction_id' => $transaction->id,
             ],
         ];
+
+        // Only add callback_url if it's not null (not localhost) to avoid browser blocking
+        if ($callbackUrl) {
+            $paystackData['callback_url'] = $callbackUrl;
+        }
 
         try {
             $ch = curl_init($paystackUrl);
@@ -150,50 +160,94 @@ class DirectPaymentService
             ];
         }
 
-        // Extract payment reference from webhook payload
-        $reference = $request->input('reference') ?? $request->input('transaction_reference');
-        $status = $request->input('status');
-        $amount = $request->input('amount');
+        // Paystack webhook format: event.data.reference, event.data.status
+        $event = $request->input('event');
+        $data = $request->input('data');
 
-        if (! $reference) {
-            return [
-                'success' => false,
-                'message' => 'Payment reference not found',
-            ];
+        // Handle Paystack webhook format
+        if ($event && $data) {
+            $reference = $data['reference'] ?? null;
+            $status = $data['status'] ?? null;
+
+            // Paystack events: 'charge.success' means payment successful
+            if ($event === 'charge.success' && $status === 'success' && $reference) {
+                // Find transaction
+                $transaction = Transaction::where('reference', $reference)->first();
+
+                if (! $transaction) {
+                    Log::warning('Transaction not found for webhook', ['reference' => $reference]);
+
+                    return [
+                        'success' => false,
+                        'message' => 'Transaction not found',
+                    ];
+                }
+
+                // Update transaction status
+                $transaction->status = 'success';
+                $transaction->vendor_response = $request->all();
+                $transaction->save();
+
+                Log::info('Payment webhook processed successfully', [
+                    'reference' => $reference,
+                    'transaction_id' => $transaction->id,
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Payment confirmed, data bundle will be delivered',
+                    'transaction' => $transaction,
+                ];
+            } elseif ($event === 'charge.failed' && isset($data['reference'])) {
+                // Handle failed payment
+                $transaction = Transaction::where('reference', $data['reference'])->first();
+
+                if ($transaction) {
+                    $transaction->status = 'failed';
+                    $transaction->vendor_response = $request->all();
+                    $transaction->save();
+
+                    Log::info('Payment failed via webhook', [
+                        'reference' => $data['reference'],
+                        'transaction_id' => $transaction->id,
+                    ]);
+                }
+
+                return [
+                    'success' => true,
+                    'message' => 'Payment failure recorded',
+                    'transaction' => $transaction ?? null,
+                ];
+            }
         }
 
-        // Find transaction
-        $transaction = Transaction::where('reference', $reference)->first();
+        // Fallback: try to extract from direct input (for testing or other formats)
+        $reference = $request->input('reference') ?? $request->input('data.reference');
+        $status = $request->input('status') ?? $request->input('data.status');
 
-        if (! $transaction) {
-            Log::warning('Transaction not found for webhook', ['reference' => $reference]);
+        if ($reference) {
+            $transaction = Transaction::where('reference', $reference)->first();
 
-            return [
-                'success' => false,
-                'message' => 'Transaction not found',
-            ];
+            if ($transaction) {
+                $transaction->status = $this->mapPaymentStatus($status);
+                $transaction->vendor_response = $request->all();
+                $transaction->save();
+
+                return [
+                    'success' => true,
+                    'message' => 'Webhook processed',
+                    'transaction' => $transaction,
+                ];
+            }
         }
 
-        // Update transaction status
-        $transaction->status = $this->mapPaymentStatus($status);
-        $transaction->vendor_response = $request->all();
-        $transaction->save();
-
-        // If payment successful, auto-deliver data bundle
-        if ($transaction->status === 'success' && $transaction->type === 'purchase') {
-            // Trigger data bundle delivery via VendorService
-            // This will be handled by the GuestPurchaseController
-            return [
-                'success' => true,
-                'message' => 'Payment confirmed, data bundle will be delivered',
-                'transaction' => $transaction,
-            ];
-        }
+        Log::warning('Webhook received but could not process', [
+            'payload' => $request->all(),
+        ]);
 
         return [
-            'success' => true,
-            'message' => 'Webhook processed',
-            'transaction' => $transaction,
+            'success' => false,
+            'message' => 'Could not process webhook data',
         ];
     }
 

@@ -34,6 +34,12 @@ Route::get('checkout/{packageId}', function ($packageId) {
     return Inertia::render('checkout', ['package' => $package]);
 })->name('checkout');
 
+// Payment success callback page (for Paystack redirect - avoids localhost blocking)
+Route::get('payment/success', function () {
+    $reference = request()->query('reference');
+    return Inertia::render('payment-success', ['reference' => $reference]);
+})->name('payment.success');
+
 // OTP API endpoints (using web middleware for session support)
 Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
     Route::post('otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'send'])->middleware('throttle:3,5');
