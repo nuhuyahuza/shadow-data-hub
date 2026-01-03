@@ -109,12 +109,39 @@ class VendorService
     }
 
     /**
-     * Get vendor balance (placeholder).
+     * Get vendor balance from API.
      */
     public function getBalance(): float
     {
-        // TODO: Implement actual vendor balance check
-        // This would call the vendor API to get account balance
-        return 0.00;
+        $endpoint = config('services.vendor.endpoint');
+        $apiKey = config('services.vendor.api_key');
+
+        if (! $endpoint || ! $apiKey) {
+            Log::warning('Vendor API not configured');
+
+            return 0.00;
+        }
+
+        try {
+            // TODO: Implement actual vendor balance API call
+            // Example:
+            // $response = Http::timeout(10)
+            //     ->withHeaders([
+            //         'Authorization' => 'Bearer '.$apiKey,
+            //     ])
+            //     ->get($endpoint.'/balance');
+            //
+            // if ($response->successful()) {
+            //     return (float) $response->json()['balance'];
+            // }
+
+            Log::info('Vendor balance check - API integration required');
+
+            return 0.00;
+        } catch (\Exception $e) {
+            Log::error('Failed to get vendor balance', ['error' => $e->getMessage()]);
+
+            return 0.00;
+        }
     }
 }

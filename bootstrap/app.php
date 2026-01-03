@@ -21,8 +21,27 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Handle API exceptions with JSON responses
+        $exceptions->respond(function (\Illuminate\Http\Request $request, \Throwable $e) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'errors' => method_exists($e, 'errors') ? $e->errors() : null,
+                ], $e->status ?? 500);
+            }
+        });
+
+        // Log all exceptions
+        $exceptions->report(function (\Throwable $e) {
+            \Log::error('Exception occurred', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        });
     })->create();

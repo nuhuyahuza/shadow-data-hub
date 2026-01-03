@@ -14,6 +14,10 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('phone')->unique()->nullable()->after('email');
             $table->enum('role', ['user', 'agent', 'admin'])->default('user')->after('phone');
+
+            // Performance indexes
+            $table->index('phone');
+            $table->index('role');
             $table->string('email')->nullable()->change();
             $table->string('password')->nullable()->change();
         });

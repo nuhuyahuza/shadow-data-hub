@@ -4,9 +4,9 @@ use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('auth')->group(function () {
-    Route::post('otp/send', [OtpController::class, 'send']);
-    Route::post('otp/verify', [OtpController::class, 'verify']);
+Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
+    Route::post('otp/send', [OtpController::class, 'send'])->middleware('throttle:3,5');
+    Route::post('otp/verify', [OtpController::class, 'verify'])->middleware('throttle:5,1');
 });
 
 Route::prefix('packages')->group(function () {
@@ -14,13 +14,14 @@ Route::prefix('packages')->group(function () {
     Route::get('{network}', [\App\Http\Controllers\DataPackageController::class, 'show']);
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::prefix('wallet')->group(function () {
         Route::get('/', [WalletController::class, 'index']);
-        Route::post('fund', [WalletController::class, 'fund']);
+        Route::post('fund', [WalletController::class, 'fund'])->middleware('throttle:10,1');
     });
 
-    Route::post('data/purchase', [\App\Http\Controllers\DataPurchaseController::class, 'store']);
+    Route::post('data/purchase', [\App\Http\Controllers\DataPurchaseController::class, 'store'])
+        ->middleware('throttle:20,1');
 
     Route::prefix('transactions')->group(function () {
         Route::get('/', [\App\Http\Controllers\TransactionController::class, 'index']);
@@ -32,7 +33,7 @@ Route::middleware('auth')->group(function () {
 Route::post('wallet/webhook', [WalletController::class, 'webhook']);
 
 // Admin routes
-Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+Route::middleware(['auth', 'throttle:120,1', \App\Http\Middleware\EnsureUserIsAdmin::class])
     ->prefix('admin')
     ->group(function () {
         Route::get('dashboard', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);

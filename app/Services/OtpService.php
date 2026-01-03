@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OtpVerification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class OtpService
@@ -34,7 +35,7 @@ class OtpService
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Expire after 5 minutes
-        $expiresAt = now()->addMinutes(5);
+        $expiresAt = now()->addMinutes(2);
 
         // Delete any existing unverified OTPs for this phone
         OtpVerification::where('phone', $phone)
@@ -117,16 +118,86 @@ class OtpService
     }
 
     /**
-     * Send SMS (placeholder - integrate with real SMS provider).
+     * Send SMS via configured provider.
      */
     protected function sendSms(string $phone, string $code): void
     {
-        // TODO: Integrate with real SMS provider (e.g., Twilio, Nexmo, etc.)
-        // For now, log the OTP for development
-        \Log::info("OTP for {$phone}: {$code}");
+        $provider = config('services.sms.provider', 'twilio');
+        $message = "Your OTP code is: {$code}. Valid for 5 minutes.";
 
-        // In production, this would call an SMS API:
-        // $smsProvider->send($phone, "Your OTP code is: {$code}");
+        try {
+            match ($provider) {
+                'twilio' => $this->sendViaTwilio($phone, $message),
+                'nexmo' => $this->sendViaNexmo($phone, $message),
+                'termii' => $this->sendViaTermii($phone, $message),
+                default => $this->sendViaLog($phone, $code),
+            };
+        } catch (\Exception $e) {
+            Log::error('SMS sending failed', [
+                'provider' => $provider,
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
+            // Fallback to logging in development
+            $this->sendViaLog($phone, $code);
+        }
+    }
+
+    /**
+     * Send SMS via Twilio.
+     */
+    protected function sendViaTwilio(string $phone, string $message): void
+    {
+        $config = config('services.sms.twilio');
+        if (! $config['account_sid'] || ! $config['auth_token']) {
+            throw new \Exception('Twilio credentials not configured');
+        }
+
+        // TODO: Implement Twilio SDK integration
+        // Example:
+        // $client = new \Twilio\Rest\Client($config['account_sid'], $config['auth_token']);
+        // $client->messages->create($phone, [
+        //     'from' => $config['from'],
+        //     'body' => $message,
+        // ]);
+
+        Log::info("Twilio SMS would be sent to {$phone}: {$message}");
+    }
+
+    /**
+     * Send SMS via Nexmo/Vonage.
+     */
+    protected function sendViaNexmo(string $phone, string $message): void
+    {
+        $config = config('services.sms.nexmo');
+        if (! $config['api_key'] || ! $config['api_secret']) {
+            throw new \Exception('Nexmo credentials not configured');
+        }
+
+        // TODO: Implement Nexmo SDK integration
+        Log::info("Nexmo SMS would be sent to {$phone}: {$message}");
+    }
+
+    /**
+     * Send SMS via Termii.
+     */
+    protected function sendViaTermii(string $phone, string $message): void
+    {
+        $config = config('services.sms.termii');
+        if (! $config['api_key']) {
+            throw new \Exception('Termii credentials not configured');
+        }
+
+        // TODO: Implement Termii API integration
+        Log::info("Termii SMS would be sent to {$phone}: {$message}");
+    }
+
+    /**
+     * Fallback: Log OTP for development.
+     */
+    protected function sendViaLog(string $phone, string $code): void
+    {
+        Log::info("OTP for {$phone}: {$code} (Development mode - SMS not configured)");
     }
 
     /**

@@ -35,4 +35,69 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | SMS Provider Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure your SMS provider for OTP delivery.
+    | Supported providers: twilio, nexmo, termii
+    |
+    */
+    'sms' => [
+        'provider' => env('SMS_PROVIDER', 'twilio'),
+        'twilio' => [
+            'account_sid' => env('TWILIO_ACCOUNT_SID'),
+            'auth_token' => env('TWILIO_AUTH_TOKEN'),
+            'from' => env('TWILIO_FROM_NUMBER'),
+        ],
+        'nexmo' => [
+            'api_key' => env('NEXMO_API_KEY'),
+            'api_secret' => env('NEXMO_API_SECRET'),
+            'from' => env('NEXMO_FROM_NUMBER'),
+        ],
+        'termii' => [
+            'api_key' => env('TERMII_API_KEY'),
+            'from' => env('TERMII_FROM_NUMBER'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Gateway Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure your payment gateway for wallet funding.
+    | Supported gateways: paystack, flutterwave
+    |
+    */
+    'payment' => [
+        'gateway' => env('PAYMENT_GATEWAY', 'paystack'),
+        'paystack' => [
+            'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+            'secret_key' => env('PAYSTACK_SECRET_KEY'),
+            'webhook_secret' => env('PAYSTACK_WEBHOOK_SECRET'),
+        ],
+        'flutterwave' => [
+            'public_key' => env('FLUTTERWAVE_PUBLIC_KEY'),
+            'secret_key' => env('FLUTTERWAVE_SECRET_KEY'),
+            'webhook_secret' => env('FLUTTERWAVE_WEBHOOK_SECRET'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | VTU Vendor API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure your VTU vendor API for data bundle purchases.
+    |
+    */
+    'vendor' => [
+        'endpoint' => env('VENDOR_API_ENDPOINT'),
+        'api_key' => env('VENDOR_API_KEY'),
+        'api_secret' => env('VENDOR_API_SECRET'),
+        'timeout' => env('VENDOR_API_TIMEOUT', 30),
+    ],
+
 ];

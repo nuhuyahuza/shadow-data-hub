@@ -5,10 +5,19 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
+    $packages = \App\Models\DataPackage::where('is_active', true)
+        ->orderBy('network')
+        ->orderBy('price')
+        ->get();
+
     return Inertia::render('welcome', [
+        'packages' => $packages,
         'canRegister' => Features::enabled(Features::registration()),
     ]);
 })->name('home');
+
+// Health check endpoint
+Route::get('health', [\App\Http\Controllers\HealthController::class, 'check']);
 
 // Auth routes (phone-based OTP)
 Route::get('auth/phone-login', function () {
@@ -21,8 +30,8 @@ Route::get('auth/otp-verify', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
-    Route::get('wallet', function () {
-        $user = auth()->user();
+    Route::get('wallet', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
         $walletService = app(\App\Services\WalletService::class);
         $wallet = $walletService->getWallet($user);
 

@@ -24,6 +24,13 @@ return new class extends Migration
             $table->json('vendor_response')->nullable();
             $table->string('vendor_reference')->nullable();
             $table->timestamps();
+
+            // Performance indexes
+            $table->index('user_id');
+            $table->index('status');
+            $table->index('type');
+            $table->index('network');
+            $table->index('created_at');
         });
     }
 
