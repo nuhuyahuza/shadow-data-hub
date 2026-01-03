@@ -22,8 +22,6 @@ class DirectPaymentService
         $phone = $data['payment_phone'];
         $paymentMethod = $data['payment_method'] ?? 'mtn_momo';
 
-        // TODO: Integrate with actual payment gateway (MTN MoMo, Telecel Cash, AirtelTigo Money)
-        // This is a placeholder implementation
         $gateway = config('services.payment.gateway', 'paystack');
 
         // Create pending transaction
@@ -40,37 +38,92 @@ class DirectPaymentService
             'payment_phone' => $phone,
         ]);
 
-        // In production, this would:
-        // 1. Initialize payment with gateway API
-        // 2. Get payment URL/authorization
-        // 3. Return payment URL to frontend
-        // Example:
-        // $paymentGateway = app(PaymentGatewayInterface::class);
-        // $paymentUrl = $paymentGateway->initiatePayment([
-        //     'amount' => $amount,
-        //     'phone' => $phone,
-        //     'reference' => $reference,
-        //     'callback_url' => route('guest.payment.webhook'),
-        // ]);
-
-        Log::info('Direct payment initiated', [
-            'reference' => $reference,
-            'amount' => $amount,
-            'phone' => $phone,
-            'gateway' => $gateway,
-        ]);
-
-        // Get Paystack public key for frontend
+        // Initialize Paystack transaction to get authorization URL
+        $secretKey = config("services.payment.{$gateway}.secret_key", '');
         $publicKey = config("services.payment.{$gateway}.public_key", '');
 
-        return [
-            'success' => true,
+        if (! $secretKey || ! $publicKey) {
+            Log::error('Paystack credentials not configured');
+
+            return [
+                'success' => false,
+                'message' => 'Payment gateway not configured',
+            ];
+        }
+
+        // Initialize Paystack transaction via API
+        $paystackUrl = 'https://api.paystack.co/transaction/initialize';
+        $callbackUrl = url('/api/guest/payment/webhook');
+
+        $paystackData = [
+            'email' => $phone.'@datahub.gh', // Use phone as email identifier
+            'amount' => $amount * 100, // Convert to pesewas
+            'currency' => 'GHS',
             'reference' => $reference,
-            'transaction_id' => $transaction->id,
-            'payment_url' => null, // Will be set when gateway is integrated
-            'public_key' => $publicKey, // Return public key for Paystack
-            'message' => 'Payment ready. Please complete payment.',
+            'callback_url' => $callbackUrl,
+            'metadata' => [
+                'recipient_phone' => $data['phone_number'] ?? null,
+                'package_name' => $data['package_name'] ?? null,
+                'transaction_id' => $transaction->id,
+            ],
         ];
+
+        try {
+            $ch = curl_init($paystackUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($paystackData));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer '.$secretKey,
+                'Content-Type: application/json',
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $responseData = json_decode($response, true);
+
+                if ($responseData['status'] && isset($responseData['data']['authorization_url'])) {
+                    $authorizationUrl = $responseData['data']['authorization_url'];
+
+                    Log::info('Paystack transaction initialized', [
+                        'reference' => $reference,
+                        'authorization_url' => $authorizationUrl,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'reference' => $reference,
+                        'transaction_id' => $transaction->id,
+                        'payment_url' => $authorizationUrl, // URL to embed in iframe
+                        'public_key' => $publicKey,
+                        'message' => 'Payment ready. Please complete payment.',
+                    ];
+                }
+            }
+
+            Log::error('Paystack API error', [
+                'http_code' => $httpCode,
+                'response' => $response,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to initialize payment. Please try again.',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Paystack initialization exception', [
+                'error' => $e->getMessage(),
+                'reference' => $reference,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Payment initialization failed. Please try again.',
+            ];
+        }
     }
 
     /**

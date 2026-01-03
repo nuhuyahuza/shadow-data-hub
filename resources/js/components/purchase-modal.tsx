@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -11,12 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import InputError from '@/components/input-error';
-import { Phone } from 'lucide-react';
+import { Phone, CheckCircle2 } from 'lucide-react';
 import {
     detectNetwork,
     getNetworkName,
     getNetworkColor,
+    formatPhoneForDisplay,
 } from '@/services/authService';
 import { initiateDirectPayment, type GuestPurchaseRequest } from '@/services/paymentService';
 
@@ -35,7 +37,7 @@ interface PurchaseModalProps {
     package: DataPackage | null;
 }
 
-type Step = 'phone' | 'processing';
+type Step = 'phone' | 'payment' | 'success';
 
 declare global {
     interface Window {
@@ -55,6 +57,8 @@ declare global {
                 };
                 callback: (response: { reference: string; status: string }) => void;
                 onClose: () => void;
+                embed?: boolean;
+                container?: string;
             }) => {
                 openIframe: () => void;
             };
@@ -69,6 +73,10 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [paystackLoaded, setPaystackLoaded] = useState(false);
+    const [transactionReference, setTransactionReference] = useState<string | null>(null);
+    const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+    const iframeContainerRef = useRef<HTMLDivElement>(null);
+    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Load Paystack script
     useEffect(() => {
@@ -103,8 +111,58 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
             setDetectedNetwork(null);
             setError(null);
             setLoading(false);
+            setTransactionReference(null);
+            setPaymentUrl(null);
+            // Clear polling interval
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
         }
     }, [isOpen]);
+
+    // Poll for payment status when in payment step
+    useEffect(() => {
+        if (step === 'payment' && transactionReference) {
+            pollIntervalRef.current = setInterval(async () => {
+                try {
+                    const checkResponse = await fetch(
+                        `/api/guest/payment/status/${transactionReference}`,
+                        {
+                            credentials: 'include',
+                        }
+                    );
+                    if (checkResponse.ok) {
+                        const statusData = await checkResponse.json();
+                        if (statusData.status === 'success') {
+                            if (pollIntervalRef.current) {
+                                clearInterval(pollIntervalRef.current);
+                                pollIntervalRef.current = null;
+                            }
+                            setStep('success');
+                        } else if (statusData.status === 'failed') {
+                            if (pollIntervalRef.current) {
+                                clearInterval(pollIntervalRef.current);
+                                pollIntervalRef.current = null;
+                            }
+                            setError('Payment failed. Please try again.');
+                            setStep('phone');
+                        }
+                    }
+                } catch (err) {
+                    // Ignore polling errors
+                }
+            }, 3000); // Poll every 3 seconds
+
+            // Cleanup on unmount
+            return () => {
+                if (pollIntervalRef.current) {
+                    clearInterval(pollIntervalRef.current);
+                    pollIntervalRef.current = null;
+                }
+            };
+        }
+    }, [step, transactionReference]);
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -133,7 +191,6 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
 
         setLoading(true);
         setError(null);
-        setStep('processing');
 
         try {
             // Initialize payment with backend
@@ -165,46 +222,12 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                 });
             }
 
-            if (result.transaction_reference && window.PaystackPop && result.public_key) {
-                // Initialize Paystack payment
-                const handler = window.PaystackPop.setup({
-                    key: result.public_key,
-                    email: `${phoneNumber.replace(/\D/g, '')}@datahub.gh`, // Use phone as email identifier
-                    amount: Number(pkg.price) * 100, // Convert to pesewas (GHS * 100)
-                    currency: 'GHS',
-                    ref: result.transaction_reference,
-                    metadata: {
-                        custom_fields: [
-                            {
-                                display_name: 'Recipient Phone',
-                                variable_name: 'recipient_phone',
-                                value: phoneNumber,
-                            },
-                            {
-                                display_name: 'Package',
-                                variable_name: 'package_name',
-                                value: pkg.name,
-                            },
-                        ],
-                    },
-                    callback: (response) => {
-                        // Payment successful
-                        if (response.status === 'success') {
-                            // Close modal and show success
-                            onClose();
-                            // You might want to show a success toast here
-                            alert('Payment successful! Your data bundle will be delivered shortly.');
-                            window.location.reload(); // Or navigate to success page
-                        }
-                    },
-                    onClose: () => {
-                        // User closed Paystack modal
-                        setStep('phone');
-                        setLoading(false);
-                    },
-                });
-
-                handler.openIframe();
+            if (result.transaction_reference && result.payment_url) {
+                setTransactionReference(result.transaction_reference);
+                setPaymentUrl(result.payment_url);
+                setStep('payment');
+                setLoading(false);
+                // Polling will be handled by useEffect
             } else {
                 // Fallback if Paystack isn't loaded or payment URL is provided
                 if (result.payment_url) {
@@ -220,8 +243,17 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to initialize payment');
             setStep('phone');
-        } finally {
             setLoading(false);
+        }
+    };
+
+    const handleClose = () => {
+        if (step === 'success') {
+            // If on success step, close and reload to show updated state
+            onClose();
+            window.location.reload();
+        } else {
+            onClose();
         }
     };
 
@@ -230,12 +262,18 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
     }
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
             <DialogContent className="sm:max-w-md backdrop-blur-sm bg-white/95 dark:bg-gray-900/95">
                 <DialogHeader>
-                    <DialogTitle>Complete Your Purchase</DialogTitle>
+                    <DialogTitle>
+                        {step === 'phone' && 'Complete Your Purchase'}
+                        {step === 'payment' && 'Complete Payment'}
+                        {step === 'success' && 'Payment Successful'}
+                    </DialogTitle>
                     <DialogDescription>
-                        Enter the phone number to receive the data bundle
+                        {step === 'phone' && 'Enter the phone number to receive the data bundle'}
+                        {step === 'payment' && 'Complete your payment using the form below'}
+                        {step === 'success' && 'Your data bundle purchase was successful'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -305,15 +343,116 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                             </Button>
                         </div>
                     </div>
+                ) : step === 'payment' ? (
+                    <div className="space-y-4">
+                        {/* Package Summary (compact) */}
+                        <div className="rounded-lg border p-3 bg-gray-50 dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium">{pkg.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {formatPhoneForDisplay(phoneNumber)}
+                                    </p>
+                                </div>
+                                <span className="text-lg font-bold">
+                                    GHS {Number(pkg.price).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Paystack iframe container */}
+                        <div
+                            ref={iframeContainerRef}
+                            className="w-full min-h-[500px] border rounded-lg overflow-hidden bg-white"
+                            id="paystack-iframe-container"
+                        >
+                            {paymentUrl ? (
+                                <iframe
+                                    src={paymentUrl}
+                                    className="w-full h-[500px] border-0"
+                                    title="Paystack Payment"
+                                    allow="payment *"
+                                    id="paystack-iframe"
+                                    style={{ minHeight: '500px' }}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-[500px]">
+                                    <div className="text-center space-y-2">
+                                        <Spinner />
+                                        <p className="text-sm text-muted-foreground">
+                                            Loading payment form...
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setStep('phone');
+                                setLoading(false);
+                            }}
+                            className="w-full"
+                        >
+                            Cancel Payment
+                        </Button>
+                    </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                        <Spinner />
-                        <p className="text-sm text-muted-foreground">
-                            Initializing payment...
-                        </p>
+                    <div className="space-y-6">
+                        {/* Success Message */}
+                        <Alert className="border-green-500 bg-green-50 dark:bg-green-900/20">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <AlertTitle className="text-green-800 dark:text-green-200">
+                                Data Purchase Successful!
+                            </AlertTitle>
+                            <AlertDescription className="text-green-700 dark:text-green-300">
+                                <div className="space-y-2 mt-2">
+                                    <p>
+                                        Your payment has been confirmed and your data bundle will be
+                                        delivered to{' '}
+                                        <span className="font-semibold">
+                                            {formatPhoneForDisplay(phoneNumber)}
+                                        </span>{' '}
+                                        shortly.
+                                    </p>
+                                    {transactionReference && (
+                                        <p className="text-xs">
+                                            Transaction Reference: {transactionReference}
+                                        </p>
+                                    )}
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+
+                        {/* Package Summary */}
+                        <div className="rounded-lg border p-4 bg-gray-50 dark:bg-gray-800">
+                            <div className="flex items-start justify-between mb-3">
+                                <div>
+                                    <h4 className="font-semibold">{pkg.name}</h4>
+                                    <p className="text-sm text-muted-foreground">{pkg.data_size}</p>
+                                </div>
+                                <Badge
+                                    className={`${getNetworkColor(pkg.network)} text-white`}
+                                >
+                                    {getNetworkName(pkg.network)}
+                                </Badge>
+                            </div>
+                            <div className="flex items-baseline justify-between pt-3 border-t">
+                                <span className="text-sm text-muted-foreground">Amount Paid</span>
+                                <span className="text-xl font-bold">
+                                    GHS {Number(pkg.price).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <Button onClick={handleClose} className="w-full">
+                            Close
+                        </Button>
                     </div>
                 )}
             </DialogContent>
         </Dialog>
     );
 }
+

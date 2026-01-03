@@ -229,4 +229,27 @@ class GuestPurchaseController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Check payment status by transaction reference.
+     */
+    public function checkStatus(string $reference): JsonResponse
+    {
+        $transaction = Transaction::where('reference', $reference)->first();
+
+        if (! $transaction) {
+            return response()->json([
+                'status' => 'not_found',
+                'message' => 'Transaction not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => $transaction->status,
+            'reference' => $transaction->reference,
+            'message' => $transaction->status === 'success'
+                ? 'Payment successful'
+                : ($transaction->status === 'failed' ? 'Payment failed' : 'Payment pending'),
+        ]);
+    }
 }
