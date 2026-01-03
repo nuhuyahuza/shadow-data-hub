@@ -106,6 +106,7 @@ class GuestPurchaseController extends Controller
             'message' => 'Payment initiated. Please complete payment to receive your data bundle.',
             'transaction_reference' => $reference,
             'payment_url' => $paymentResult['payment_url'],
+            'public_key' => $paymentResult['public_key'] ?? null, // Include Paystack public key
             'requires_payment' => true,
         ]);
     }

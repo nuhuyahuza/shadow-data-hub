@@ -12,6 +12,7 @@ export interface GuestPurchaseResponse {
     message: string;
     transaction_reference: string;
     payment_url?: string | null;
+    public_key?: string; // Paystack public key
     requires_payment?: boolean;
     requires_funding?: boolean;
     current_balance?: number;

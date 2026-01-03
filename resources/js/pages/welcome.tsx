@@ -1,11 +1,12 @@
 import { dashboard, login, phoneLogin } from '@/routes';
 import { type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { Search, Wifi, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getNetworkName, getNetworkColor } from '@/services/authService';
+import PurchaseModal from '@/components/purchase-modal';
 
 interface DataPackage {
     id: number;
@@ -26,6 +27,8 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
     const { auth } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null);
+    const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
+    const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
 
     // Filter packages based on search and network
     const filteredPackages = useMemo(() => {
@@ -68,8 +71,8 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
     }, [filteredPackages]);
 
     const handlePackageSelect = (pkg: DataPackage) => {
-        // All users (guests and authenticated) go to checkout
-        router.visit(`/checkout/${pkg.id}`);
+        setSelectedPackage(pkg);
+        setIsPurchaseModalOpen(true);
     };
 
     const networks = ['mtn', 'telecel', 'airteltigo'] as const;
@@ -248,6 +251,16 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                     </div>
                 </footer>
             </div>
+
+            {/* Purchase Modal */}
+            <PurchaseModal
+                isOpen={isPurchaseModalOpen}
+                onClose={() => {
+                    setIsPurchaseModalOpen(false);
+                    setSelectedPackage(null);
+                }}
+                package={selectedPackage}
+            />
         </>
     );
 }

@@ -60,12 +60,16 @@ class DirectPaymentService
             'gateway' => $gateway,
         ]);
 
+        // Get Paystack public key for frontend
+        $publicKey = config("services.payment.{$gateway}.public_key", '');
+
         return [
             'success' => true,
             'reference' => $reference,
             'transaction_id' => $transaction->id,
             'payment_url' => null, // Will be set when gateway is integrated
-            'message' => 'Payment gateway integration required. Configure payment gateway.',
+            'public_key' => $publicKey, // Return public key for Paystack
+            'message' => 'Payment ready. Please complete payment.',
         ];
     }
 
