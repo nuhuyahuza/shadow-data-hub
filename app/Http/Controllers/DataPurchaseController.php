@@ -39,7 +39,10 @@ class DataPurchaseController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($validated, $user, $package) {
+        // Extract idempotency key before transaction closure
+        $idempotencyKey = $request->header('Idempotency-Key') ?? $request->input('idempotency_key');
+
+        return DB::transaction(function () use ($validated, $user, $package, $idempotencyKey) {
             // Reload package with lock to ensure consistency
             $package = DataPackage::lockForUpdate()->findOrFail($validated['package_id']);
 
@@ -57,8 +60,6 @@ class DataPurchaseController extends Controller
             }
 
             // Generate transaction reference with idempotency key
-            // Use request idempotency key if provided, otherwise generate one
-            $idempotencyKey = $request->header('Idempotency-Key') ?? $request->input('idempotency_key');
             $reference = $idempotencyKey ? 'TXN-'.$idempotencyKey : 'TXN'.strtoupper(uniqid());
 
             // Check for existing transaction with same reference (idempotency)
@@ -117,8 +118,20 @@ class DataPurchaseController extends Controller
             // Call vendor API
             $vendorResult = $this->vendorService->purchaseData($transaction);
 
+            // Check if manual processing is required
+            if (isset($vendorResult['requires_manual_processing']) && $vendorResult['requires_manual_processing']) {
+                // Transaction is pending manual processing - don't refund, just return pending status
+                // User-friendly message without mentioning manual processing
+                return response()->json([
+                    'message' => 'Data bundle purchase successful! You will receive your data shortly.',
+                    'transaction_reference' => $reference,
+                    'status' => 'pending',
+                    'requires_manual_processing' => true,
+                ], 200);
+            }
+
             if (! $vendorResult['success']) {
-                // Auto-refund on vendor failure
+                // Auto-refund on vendor failure (only if not manual processing)
                 $this->walletService->refund($user, $package->price, $reference);
 
                 // Update transaction status to failed

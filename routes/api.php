@@ -58,6 +58,7 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
         Route::post('packages', [\App\Http\Controllers\Admin\DataPackageController::class, 'store']);
         Route::patch('packages/{id}', [\App\Http\Controllers\Admin\DataPackageController::class, 'update']);
         Route::get('transactions', [\App\Http\Controllers\Admin\TransactionController::class, 'index']);
+        Route::post('transactions/{id}/fulfill', [\App\Http\Controllers\Admin\TransactionController::class, 'fulfill']);
         Route::post('transactions/{id}/refund', [\App\Http\Controllers\Admin\TransactionController::class, 'refund']);
         Route::get('vendor-logs', [\App\Http\Controllers\Admin\VendorLogController::class, 'index']);
     });

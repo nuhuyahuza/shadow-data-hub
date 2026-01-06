@@ -61,4 +61,43 @@ class TransactionController extends Controller
             'message' => 'Refund processed successfully',
         ]);
     }
+
+    /**
+     * Manually fulfill a pending transaction (when vendor API is not available).
+     */
+    public function fulfill(Request $request, string $id): JsonResponse
+    {
+        $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+
+        if ($transaction->status !== 'pending') {
+            return response()->json([
+                'message' => 'Can only fulfill pending transactions',
+            ], 422);
+        }
+
+        if ($transaction->type !== 'purchase') {
+            return response()->json([
+                'message' => 'Can only fulfill purchase transactions',
+            ], 422);
+        }
+
+        // Update transaction status to success
+        $transaction->update([
+            'status' => 'success',
+            'vendor_reference' => 'MANUAL-'.strtoupper(substr($transaction->reference, -8)),
+            'vendor_response' => array_merge(
+                $transaction->vendor_response ?? [],
+                [
+                    'fulfilled_manually' => true,
+                    'fulfilled_by' => $request->user()->id,
+                    'fulfilled_at' => now()->toIso8601String(),
+                ]
+            ),
+        ]);
+
+        return response()->json([
+            'message' => 'Transaction fulfilled successfully',
+            'transaction' => $transaction->fresh(['user', 'package']),
+        ]);
+    }
 }

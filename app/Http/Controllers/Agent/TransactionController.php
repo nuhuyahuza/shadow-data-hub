@@ -46,12 +46,25 @@ class TransactionController extends Controller
             ], 422);
         }
 
-        // Update transaction status to success
-        $transaction->status = 'success';
-        $transaction->save();
+        if ($transaction->type !== 'purchase') {
+            return response()->json([
+                'message' => 'Can only fulfill purchase transactions',
+            ], 422);
+        }
 
-        // TODO: Trigger actual data bundle delivery via vendor service
-        // This would typically call the vendor API to deliver the data
+        // Update transaction status to success
+        $transaction->update([
+            'status' => 'success',
+            'vendor_reference' => 'MANUAL-'.strtoupper(substr($transaction->reference, -8)),
+            'vendor_response' => array_merge(
+                $transaction->vendor_response ?? [],
+                [
+                    'fulfilled_manually' => true,
+                    'fulfilled_by' => $request->user()->id,
+                    'fulfilled_at' => now()->toIso8601String(),
+                ]
+            ),
+        ]);
 
         return response()->json([
             'message' => 'Transaction fulfilled successfully',
