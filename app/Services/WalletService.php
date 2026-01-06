@@ -93,11 +93,23 @@ class WalletService
     }
 
     /**
-     * Credit amount to wallet.
+     * Credit amount to wallet (with idempotency).
      */
     public function credit(User $user, float $amount, string $reference, array $metadata = []): void
     {
         DB::transaction(function () use ($user, $amount, $reference, $metadata) {
+            // Check for existing transaction with same reference (idempotency)
+            $existingTransaction = Transaction::where('reference', $reference)
+                ->where('user_id', $user->id)
+                ->where('type', 'funding')
+                ->lockForUpdate()
+                ->first();
+
+            // If transaction already exists and is successful, skip (idempotent)
+            if ($existingTransaction && $existingTransaction->status === 'success') {
+                return;
+            }
+
             $wallet = Wallet::where('user_id', $user->id)
                 ->lockForUpdate()
                 ->first();
@@ -116,15 +128,24 @@ class WalletService
             $wallet->total_funded += $amount;
             $wallet->save();
 
-            // Create transaction record
-            Transaction::create([
-                'user_id' => $user->id,
-                'reference' => $reference,
-                'type' => 'funding',
-                'amount' => $amount,
-                'status' => 'success',
-                ...$metadata,
-            ]);
+            // Update existing transaction if it exists, otherwise create new one
+            if ($existingTransaction) {
+                $existingTransaction->update([
+                    'status' => 'success',
+                    'amount' => $amount,
+                    ...$metadata,
+                ]);
+            } else {
+                // Create transaction record
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'reference' => $reference,
+                    'type' => 'funding',
+                    'amount' => $amount,
+                    'status' => 'success',
+                    ...$metadata,
+                ]);
+            }
         });
     }
 

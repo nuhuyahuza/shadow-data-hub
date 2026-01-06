@@ -365,6 +365,45 @@ class WalletController extends Controller
 
         // If pending, verify with Paystack
         if ($transaction->status === 'pending') {
+            // In test/local mode, automatically complete the transaction when checkStatus is called
+            $isTestMode = in_array(config('app.env'), ['local', 'development', 'testing']);
+
+            if ($isTestMode) {
+                // Auto-complete transaction in test mode
+                // Credit wallet if not already credited
+                $this->walletService->credit(
+                    $user,
+                    (float) $transaction->amount,
+                    $reference
+                );
+
+                // Update transaction status
+                $transaction->update([
+                    'status' => 'success',
+                    'vendor_response' => array_merge(
+                        $transaction->vendor_response ?? [],
+                        ['auto_completed_in_test_mode' => true, 'completed_at' => now()->toIso8601String()]
+                    ),
+                ]);
+
+                $wallet = $this->walletService->getWallet($user);
+
+                Log::info('Wallet funding auto-completed in test mode', [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => $user->id,
+                    'reference' => $reference,
+                    'environment' => config('app.env'),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'status' => 'success',
+                    'reference' => $reference,
+                    'message' => 'Payment confirmed and wallet credited (test mode)',
+                    'wallet' => $wallet,
+                ]);
+            }
+
             $verificationResult = null;
 
             // For mobile money payments, use requery if we have Paystack transaction ID
