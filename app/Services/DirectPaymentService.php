@@ -51,7 +51,15 @@ class DirectPaymentService
             ];
         }
 
-        // Initialize Paystack transaction via API
+        // Determine if this is mobile money payment
+        $isMobileMoney = in_array($paymentMethod, ['mtn_momo', 'telecel_cash', 'airteltigo_money']);
+
+        if ($isMobileMoney) {
+            // Use Paystack Mobile Money Charge API
+            return $this->initiateMobileMoneyCharge($transaction, $phone, $amount, $reference, $data, $secretKey, $publicKey);
+        }
+
+        // Use standard Paystack transaction initialization for card payments
         $paystackUrl = 'https://api.paystack.co/transaction/initialize';
         // For development: use null to avoid localhost blocking
         // For production: use a public URL
@@ -125,6 +133,118 @@ class DirectPaymentService
             ];
         } catch (\Exception $e) {
             Log::error('Paystack initialization exception', [
+                'error' => $e->getMessage(),
+                'reference' => $reference,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Payment initialization failed. Please try again.',
+            ];
+        }
+    }
+
+    /**
+     * Initiate Paystack Mobile Money charge.
+     */
+    private function initiateMobileMoneyCharge(
+        Transaction $transaction,
+        string $phone,
+        float $amount,
+        string $reference,
+        array $data,
+        string $secretKey,
+        string $publicKey
+    ): array {
+        // Map payment method to Paystack provider
+        $providerMap = [
+            'mtn_momo' => 'MTN',
+            'telecel_cash' => 'VODAFONE',
+            'airteltigo_money' => 'AIRTELTIGO',
+        ];
+
+        $paymentMethod = $data['payment_method'] ?? 'mtn_momo';
+        $provider = $providerMap[$paymentMethod] ?? 'MTN';
+
+        // Format phone number (remove leading 0, add country code if needed)
+        $formattedPhone = preg_replace('/^0/', '233', preg_replace('/\D/', '', $phone));
+
+        $paystackUrl = 'https://api.paystack.co/charge/mobile_money';
+        $paystackData = [
+            'email' => $phone.'@datahub.gh',
+            'amount' => $amount * 100, // Convert to pesewas
+            'currency' => 'GHS',
+            'mobile_money' => [
+                'phone' => $formattedPhone,
+                'provider' => $provider,
+            ],
+            'reference' => $reference,
+            'metadata' => [
+                'recipient_phone' => $data['phone_number'] ?? null,
+                'package_name' => $data['package_name'] ?? null,
+                'transaction_id' => $transaction->id,
+            ],
+        ];
+
+        try {
+            $ch = curl_init($paystackUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($paystackData));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer '.$secretKey,
+                'Content-Type: application/json',
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $responseData = json_decode($response, true);
+
+                if ($responseData['status'] && isset($responseData['data'])) {
+                    $chargeData = $responseData['data'];
+                    $paystackTransactionId = $chargeData['transaction'] ?? null;
+                    $displayData = $chargeData['display'] ?? [];
+
+                    // Store Paystack transaction ID in vendor_reference field
+                    if ($paystackTransactionId) {
+                        $transaction->update([
+                            'vendor_reference' => (string) $paystackTransactionId,
+                        ]);
+                    }
+
+                    Log::info('Paystack mobile money charge initiated', [
+                        'reference' => $reference,
+                        'paystack_transaction_id' => $paystackTransactionId,
+                        'provider' => $provider,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'reference' => $reference,
+                        'transaction_id' => $transaction->id,
+                        'paystack_transaction_id' => $paystackTransactionId,
+                        'payment_method' => 'mobile_money',
+                        'display' => $displayData, // Instructions for user
+                        'public_key' => $publicKey,
+                        'message' => $displayData['message'] ?? 'Please complete the payment on your mobile device.',
+                    ];
+                }
+            }
+
+            Log::error('Paystack mobile money charge error', [
+                'http_code' => $httpCode,
+                'response' => $response,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to initiate mobile money payment. Please try again.',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Paystack mobile money charge exception', [
                 'error' => $e->getMessage(),
                 'reference' => $reference,
             ]);

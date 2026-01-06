@@ -75,6 +75,13 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
     const [paystackLoaded, setPaystackLoaded] = useState(false);
     const [transactionReference, setTransactionReference] = useState<string | null>(null);
     const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+    const [paymentDisplay, setPaymentDisplay] = useState<{
+        type?: string;
+        message?: string;
+        message_dial?: string;
+        message_prompt?: string;
+        timer?: number;
+    } | null>(null);
     const iframeContainerRef = useRef<HTMLDivElement>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isPollingRef = useRef<boolean>(false);
@@ -114,6 +121,7 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
             setLoading(false);
             setTransactionReference(null);
             setPaymentUrl(null);
+            setPaymentDisplay(null);
             // Stop polling
             isPollingRef.current = false;
             if (pollIntervalRef.current) {
@@ -253,23 +261,26 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                 });
             }
 
-            if (result.transaction_reference && result.payment_url) {
+            if (result.transaction_reference) {
                 setTransactionReference(result.transaction_reference);
-                setPaymentUrl(result.payment_url);
-                setStep('payment');
-                setLoading(false);
+                
+                // Handle mobile money payment (with display instructions)
+                if (result.payment_method === 'mobile_money' && result.display) {
+                    setPaymentDisplay(result.display);
+                    setStep('payment');
+                    setLoading(false);
+                } 
+                // Handle card payment (with iframe URL)
+                else if (result.payment_url) {
+                    setPaymentUrl(result.payment_url);
+                    setStep('payment');
+                    setLoading(false);
+                } else {
+                    throw new Error('Payment initialization failed. No payment URL or instructions provided.');
+                }
                 // Polling will be handled by useEffect
             } else {
-                // Fallback if Paystack isn't loaded or payment URL is provided
-                if (result.payment_url) {
-                    window.location.href = result.payment_url;
-                } else {
-                    throw new Error(
-                        result.public_key
-                            ? 'Paystack payment initialization failed. Please refresh and try again.'
-                            : 'Payment gateway not configured. Please contact support.'
-                    );
-                }
+                throw new Error('Payment initialization failed. No transaction reference received.');
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to initialize payment');
@@ -391,13 +402,50 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                             </div>
                         </div>
 
-                        {/* Paystack iframe container */}
-                        <div
-                            ref={iframeContainerRef}
-                            className="w-full min-h-[500px] border rounded-lg overflow-hidden bg-white"
-                            id="paystack-iframe-container"
-                        >
-                            {paymentUrl ? (
+                        {/* Mobile Money Payment Instructions */}
+                        {paymentDisplay ? (
+                            <div className="space-y-4">
+                                <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                                    <AlertTitle className="text-blue-800 dark:text-blue-200">
+                                        Complete Payment on Your Phone
+                                    </AlertTitle>
+                                    <AlertDescription className="text-blue-700 dark:text-blue-300">
+                                        <div className="space-y-3 mt-2">
+                                            {paymentDisplay.message_dial && (
+                                                <p className="font-semibold">
+                                                    {paymentDisplay.message_dial}
+                                                </p>
+                                            )}
+                                            {paymentDisplay.message_prompt && (
+                                                <p>{paymentDisplay.message_prompt}</p>
+                                            )}
+                                            {paymentDisplay.message && !paymentDisplay.message_dial && (
+                                                <p>{paymentDisplay.message}</p>
+                                            )}
+                                            {paymentDisplay.timer && (
+                                                <p className="text-xs">
+                                                    You have {paymentDisplay.timer} seconds to complete this payment.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+
+                                <div className="flex items-center justify-center py-4">
+                                    <Spinner />
+                                </div>
+
+                                <p className="text-sm text-center text-muted-foreground">
+                                    Waiting for payment confirmation... Please complete the payment on your mobile device.
+                                </p>
+                            </div>
+                        ) : paymentUrl ? (
+                            /* Card Payment iframe */
+                            <div
+                                ref={iframeContainerRef}
+                                className="w-full min-h-[500px] border rounded-lg overflow-hidden bg-white"
+                                id="paystack-iframe-container"
+                            >
                                 <iframe
                                     src={paymentUrl}
                                     className="w-full h-[500px] border-0"
@@ -405,48 +453,18 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
                                     allow="payment *"
                                     id="paystack-iframe"
                                     style={{ minHeight: '500px' }}
-                                    onLoad={() => {
-                                        // Listen for URL changes in iframe to detect payment completion
-                                        const iframe = document.getElementById('paystack-iframe') as HTMLIFrameElement;
-                                        if (iframe) {
-                                            try {
-                                                // Check if iframe URL contains success indicators
-                                                const iframeSrc = iframe.src;
-                                                if (iframeSrc.includes('success') || iframeSrc.includes('callback')) {
-                                                    // Payment might be complete, check status
-                                                    if (transactionReference) {
-                                                        fetch(`/api/guest/payment/status/${transactionReference}`, {
-                                                            credentials: 'include',
-                                                        })
-                                                            .then((res) => res.json())
-                                                            .then((data) => {
-                                                                if (data.status === 'success') {
-                                                                    setStep('success');
-                                                                }
-                                                            })
-                                                            .catch(() => {
-                                                                // Ignore errors
-                                                            });
-                                                    }
-                                                }
-                                            } catch (e) {
-                                                // Cross-origin restrictions - this is expected
-                                                // We'll rely on polling instead
-                                            }
-                                        }
-                                    }}
                                 />
-                            ) : (
-                                <div className="flex items-center justify-center h-[500px]">
-                                    <div className="text-center space-y-2">
-                                        <Spinner />
-                                        <p className="text-sm text-muted-foreground">
-                                            Loading payment form...
-                                        </p>
-                                    </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-[500px]">
+                                <div className="text-center space-y-2">
+                                    <Spinner />
+                                    <p className="text-sm text-muted-foreground">
+                                        Loading payment form...
+                                    </p>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         <Button
                             variant="outline"

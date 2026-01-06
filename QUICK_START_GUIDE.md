@@ -150,3 +150,4 @@ For issues or questions:
 3. Check health endpoint: `/health`
 4. Review vendor logs in admin panel (if accessible)
 
+

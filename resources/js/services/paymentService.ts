@@ -13,6 +13,15 @@ export interface GuestPurchaseResponse {
     transaction_reference: string;
     payment_url?: string | null;
     public_key?: string; // Paystack public key
+    payment_method?: 'mobile_money' | 'card' | 'direct';
+    paystack_transaction_id?: string | null;
+    display?: {
+        type?: string;
+        message?: string;
+        message_dial?: string;
+        message_prompt?: string;
+        timer?: number;
+    };
     requires_payment?: boolean;
     requires_funding?: boolean;
     current_balance?: number;

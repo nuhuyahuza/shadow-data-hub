@@ -75,3 +75,4 @@ CACHE_STORE=redis
 4. Run `php artisan migrate`
 5. Run `php artisan db:seed --class=DataPackageSeeder`
 
+
