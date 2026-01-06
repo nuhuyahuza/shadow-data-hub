@@ -77,6 +77,14 @@ class OtpController extends Controller
             $user->load('wallet');
         }
 
+        // Block admin login via OTP - admins must use password login
+        if ($user->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin accounts require password authentication. Please use the admin login page.',
+            ], 403);
+        }
+
         // Log user in and remember session
         Auth::login($user, true); // true = remember the user
 

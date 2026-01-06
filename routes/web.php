@@ -28,15 +28,26 @@ Route::get('auth/otp-verify', function () {
     return Inertia::render('auth/otp-verify');
 })->name('otp-verify')->middleware('guest');
 
+// Admin login routes (password-based with 2FA)
+Route::get('auth/admin-login', function () {
+    return Inertia::render('auth/admin-login');
+})->name('admin-login')->middleware('guest');
+
+Route::get('auth/admin/two-factor-challenge', function () {
+    return Inertia::render('auth/admin-two-factor-challenge');
+})->name('admin.two-factor.challenge')->middleware('guest');
+
 // Guest checkout route
 Route::get('checkout/{packageId}', function ($packageId) {
     $package = \App\Models\DataPackage::findOrFail($packageId);
+
     return Inertia::render('checkout', ['package' => $package]);
 })->name('checkout');
 
 // Payment success callback page (for Paystack redirect - avoids localhost blocking)
 Route::get('payment/success', function () {
     $reference = request()->query('reference');
+
     return Inertia::render('payment-success', ['reference' => $reference]);
 })->name('payment.success');
 
@@ -44,6 +55,9 @@ Route::get('payment/success', function () {
 Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
     Route::post('otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'send'])->middleware('throttle:3,5');
     Route::post('otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verify'])->middleware('throttle:5,1');
+    // Admin login (password-based, requires web middleware for session)
+    Route::post('admin/login', [\App\Http\Controllers\Auth\AdminLoginController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('admin/two-factor-challenge', [\App\Http\Controllers\Auth\AdminLoginController::class, 'twoFactorChallenge'])->middleware('throttle:5,1');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -66,20 +80,23 @@ Route::middleware(['auth'])->group(function () {
     })->name('transactions');
 
     // Admin routes
-    Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->group(function () {
-        Route::get('admin/dashboard', function () {
+    Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('admin.dashboard');
+        })->name('admin');
+        Route::get('dashboard', function () {
             return Inertia::render('admin/dashboard');
         })->name('admin.dashboard');
-        Route::get('admin/users', function () {
+        Route::get('users', function () {
             return Inertia::render('admin/users');
         })->name('admin.users');
-        Route::get('admin/packages', function () {
+        Route::get('packages', function () {
             return Inertia::render('admin/packages');
         })->name('admin.packages');
-        Route::get('admin/transactions', function () {
+        Route::get('transactions', function () {
             return Inertia::render('admin/transactions');
         })->name('admin.transactions');
-        Route::get('admin/vendor-logs', function () {
+        Route::get('vendor-logs', function () {
             return Inertia::render('admin/vendor-logs');
         })->name('admin.vendor-logs');
     });

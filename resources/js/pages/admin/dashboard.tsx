@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Users, DollarSign, TrendingUp } from 'lucide-react';
-import StatsCard from '../../dashboard/components/StatsCard';
+import StatsCard from '../dashboard/components/StatsCard';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,12 +26,24 @@ export default function AdminDashboard() {
         vendor_balance: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/admin/dashboard')
-            .then((res) => res.json())
+        fetch('/api/admin/dashboard', {
+            credentials: 'include',
+        })
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error('Failed to load dashboard data');
+                }
+                return res.json();
+            })
             .then((data) => {
                 setStats(data);
+                setLoading(false);
+            })
+            .catch((err) => {
+                setError(err instanceof Error ? err.message : 'An error occurred');
                 setLoading(false);
             });
     }, []);
@@ -50,6 +62,10 @@ export default function AdminDashboard() {
                     <CardContent>
                         {loading ? (
                             <p>Loading...</p>
+                        ) : error ? (
+                            <div className="text-center py-4">
+                                <p className="text-destructive">{error}</p>
+                            </div>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-4">
                                 <StatsCard
@@ -80,4 +96,3 @@ export default function AdminDashboard() {
         </AppLayout>
     );
 }
-
