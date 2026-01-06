@@ -25,9 +25,23 @@ class DataPurchaseController extends Controller
         $validated = $request->validated();
         $user = $request->user();
 
-        return DB::transaction(function () use ($validated, $user) {
-            // Get package
-            $package = DataPackage::findOrFail($validated['package_id']);
+        // Check wallet balance first (before transaction to avoid unnecessary locks)
+        $wallet = $this->walletService->getWallet($user);
+        $package = DataPackage::findOrFail($validated['package_id']);
+
+        if ($wallet['balance'] < $package->price) {
+            return response()->json([
+                'message' => 'Insufficient wallet balance',
+                'requires_funding' => true,
+                'current_balance' => $wallet['balance'],
+                'required_amount' => $package->price,
+                'shortfall' => $package->price - $wallet['balance'],
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($validated, $user, $package) {
+            // Reload package with lock to ensure consistency
+            $package = DataPackage::lockForUpdate()->findOrFail($validated['package_id']);
 
             if (! $package->is_active) {
                 return response()->json([
@@ -42,10 +56,43 @@ class DataPurchaseController extends Controller
                 ], 422);
             }
 
-            // Generate transaction reference
-            $reference = 'TXN'.strtoupper(uniqid());
+            // Generate transaction reference with idempotency key
+            // Use request idempotency key if provided, otherwise generate one
+            $idempotencyKey = $request->header('Idempotency-Key') ?? $request->input('idempotency_key');
+            $reference = $idempotencyKey ? 'TXN-'.$idempotencyKey : 'TXN'.strtoupper(uniqid());
 
-            // Deduct from wallet
+            // Check for existing transaction with same reference (idempotency)
+            $existingTransaction = Transaction::where('reference', $reference)
+                ->where('user_id', $user->id)
+                ->where('type', 'purchase')
+                ->first();
+
+            if ($existingTransaction) {
+                // Transaction already exists, return existing result
+                if ($existingTransaction->status === 'success') {
+                    return response()->json([
+                        'message' => 'Data bundle purchased successfully',
+                        'transaction_reference' => $reference,
+                        'vendor_reference' => $existingTransaction->vendor_reference ?? null,
+                        'idempotent' => true,
+                    ]);
+                }
+
+                // If transaction exists but failed, allow retry with new reference
+                if ($existingTransaction->status === 'failed') {
+                    $reference = 'TXN'.strtoupper(uniqid());
+                } else {
+                    // Transaction is pending, return pending status
+                    return response()->json([
+                        'message' => 'Transaction is already being processed',
+                        'transaction_reference' => $reference,
+                        'status' => 'pending',
+                        'idempotent' => true,
+                    ], 202);
+                }
+            }
+
+            // Deduct from wallet (atomic operation with lock)
             $deducted = $this->walletService->deduct(
                 $user,
                 $package->price,
@@ -60,6 +107,7 @@ class DataPurchaseController extends Controller
             if (! $deducted) {
                 return response()->json([
                     'message' => 'Insufficient wallet balance',
+                    'requires_funding' => true,
                 ], 422);
             }
 
@@ -73,11 +121,20 @@ class DataPurchaseController extends Controller
                 // Auto-refund on vendor failure
                 $this->walletService->refund($user, $package->price, $reference);
 
+                // Update transaction status to failed
+                $transaction->update(['status' => 'failed']);
+
                 return response()->json([
                     'message' => $vendorResult['message'] ?? 'Failed to purchase data bundle',
                     'transaction_reference' => $reference,
                 ], 422);
             }
+
+            // Update transaction status to success
+            $transaction->update([
+                'status' => 'success',
+                'vendor_reference' => $vendorResult['vendor_reference'] ?? null,
+            ]);
 
             return response()->json([
                 'message' => 'Data bundle purchased successfully',

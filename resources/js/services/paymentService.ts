@@ -122,6 +122,51 @@ export async function fundWalletAndPurchase(
 }
 
 /**
+ * Purchase data bundle using wallet balance (for authenticated users).
+ */
+export interface WalletPurchaseRequest {
+    package_id: number;
+    network: string;
+    phone_number: string;
+    idempotency_key?: string;
+}
+
+export interface WalletPurchaseResponse {
+    message: string;
+    transaction_reference: string;
+    vendor_reference?: string | null;
+    idempotent?: boolean;
+    status?: 'success' | 'pending';
+    requires_funding?: boolean;
+    current_balance?: number;
+    required_amount?: number;
+    shortfall?: number;
+}
+
+export async function purchaseWithWallet(
+    data: WalletPurchaseRequest
+): Promise<WalletPurchaseResponse> {
+    const response = await fetch(`${API_BASE}/data/purchase`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+            ...(data.idempotency_key && { 'Idempotency-Key': data.idempotency_key }),
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw error;
+    }
+
+    return response.json();
+}
+
+/**
  * Redirect to payment gateway URL.
  */
 export function redirectToPayment(paymentUrl: string): void {

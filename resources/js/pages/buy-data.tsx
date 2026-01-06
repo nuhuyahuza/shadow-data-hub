@@ -4,9 +4,12 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ShoppingCart, Wallet, AlertCircle } from 'lucide-react';
 import { getNetworkName, getNetworkColor } from '@/services/authService';
+import { getWallet } from '@/services/walletService';
 import PurchaseModal from '@/components/purchase-modal';
+import WalletFundingModal from '@/components/wallet-funding-modal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -36,6 +39,29 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
     const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
     const [packages, setPackages] = useState<DataPackage[]>(initialPackages || []);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+    const [walletBalance, setWalletBalance] = useState<number>(0);
+    const [loadingBalance, setLoadingBalance] = useState(true);
+    const [insufficientFunds, setInsufficientFunds] = useState<{
+        show: boolean;
+        required: number;
+        shortfall: number;
+    }>({ show: false, required: 0, shortfall: 0 });
+
+    // Fetch wallet balance on mount
+    useEffect(() => {
+        const fetchWallet = async () => {
+            try {
+                const wallet = await getWallet();
+                setWalletBalance(Number(wallet.balance));
+            } catch (err) {
+                console.error('Failed to load wallet:', err);
+            } finally {
+                setLoadingBalance(false);
+            }
+        };
+        fetchWallet();
+    }, []);
 
     useEffect(() => {
         if (selectedNetwork) {
@@ -56,9 +82,42 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
         }
     }, [selectedNetwork]);
 
-    const handlePackageSelect = (pkg: DataPackage) => {
+    const handlePackageSelect = async (pkg: DataPackage) => {
+        const packagePrice = Number(pkg.price);
+        
+        // Check wallet balance before opening modal
+        if (walletBalance < packagePrice) {
+            setInsufficientFunds({
+                show: true,
+                required: packagePrice,
+                shortfall: packagePrice - walletBalance,
+            });
+            return;
+        }
+
+        setInsufficientFunds({ show: false, required: 0, shortfall: 0 });
         setSelectedPackage(pkg);
         setIsModalOpen(true);
+    };
+
+    const handleWalletFunded = async () => {
+        // Refresh wallet balance after funding
+        try {
+            const wallet = await getWallet();
+            setWalletBalance(Number(wallet.balance));
+            setIsWalletModalOpen(false);
+            
+            // If a package was selected, try to open purchase modal again
+            if (selectedPackage) {
+                const packagePrice = Number(selectedPackage.price);
+                if (Number(wallet.balance) >= packagePrice) {
+                    setInsufficientFunds({ show: false, required: 0, shortfall: 0 });
+                    setIsModalOpen(true);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to refresh wallet:', err);
+        }
     };
 
     const handleModalClose = () => {
@@ -87,6 +146,31 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
+                        {insufficientFunds.show && (
+                            <Alert className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20">
+                                <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                <AlertTitle className="text-orange-800 dark:text-orange-200">
+                                    Insufficient Wallet Balance
+                                </AlertTitle>
+                                <AlertDescription className="text-orange-700 dark:text-orange-300">
+                                    <div className="space-y-2 mt-2">
+                                        <p>
+                                            You need GHS {insufficientFunds.required.toFixed(2)} to purchase this package, but your current balance is GHS {walletBalance.toFixed(2)}.
+                                        </p>
+                                        <p className="font-semibold">
+                                            Shortfall: GHS {insufficientFunds.shortfall.toFixed(2)}
+                                        </p>
+                                        <Button
+                                            onClick={() => setIsWalletModalOpen(true)}
+                                            className="mt-2 bg-orange-600 hover:bg-orange-700"
+                                        >
+                                            <Wallet className="h-4 w-4 mr-2" />
+                                            Fund My Wallet
+                                        </Button>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         {step === 'network' && (
                             <div className="space-y-4">
                                 <p className="text-sm text-muted-foreground">
@@ -173,6 +257,13 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                     isOpen={isModalOpen}
                     onClose={handleModalClose}
                     package={selectedPackage}
+                    onSuccess={handleWalletFunded}
+                />
+
+                <WalletFundingModal
+                    isOpen={isWalletModalOpen}
+                    onClose={() => setIsWalletModalOpen(false)}
+                    onSuccess={handleWalletFunded}
                 />
             </div>
         </AppLayout>

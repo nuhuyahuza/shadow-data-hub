@@ -34,11 +34,34 @@ class WalletService
     }
 
     /**
-     * Deduct amount from wallet (with locking).
+     * Deduct amount from wallet (with locking and idempotency).
      */
     public function deduct(User $user, float $amount, string $reference, array $metadata = []): bool
     {
         return DB::transaction(function () use ($user, $amount, $reference, $metadata) {
+            // Check for existing transaction with same reference (idempotency)
+            $existingTransaction = Transaction::where('reference', $reference)
+                ->where('user_id', $user->id)
+                ->where('type', 'purchase')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingTransaction) {
+                // If transaction already exists and is successful, return true (idempotent)
+                if ($existingTransaction->status === 'success') {
+                    return true;
+                }
+
+                // If transaction exists but failed, allow retry
+                if ($existingTransaction->status === 'failed') {
+                    // Delete failed transaction to allow retry
+                    $existingTransaction->delete();
+                } else {
+                    // Transaction is pending, return false to indicate it's being processed
+                    return false;
+                }
+            }
+
             $wallet = Wallet::where('user_id', $user->id)
                 ->lockForUpdate()
                 ->first();
@@ -134,4 +157,3 @@ class WalletService
         });
     }
 }
-

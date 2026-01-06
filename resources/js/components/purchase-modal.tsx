@@ -20,7 +20,12 @@ import {
     getNetworkColor,
     formatPhoneForDisplay,
 } from '@/services/authService';
-import { initiateDirectPayment, type GuestPurchaseRequest } from '@/services/paymentService';
+import {
+    initiateDirectPayment,
+    purchaseWithWallet,
+    type GuestPurchaseRequest,
+    type WalletPurchaseRequest,
+} from '@/services/paymentService';
 
 interface DataPackage {
     id: number;
@@ -35,6 +40,8 @@ interface PurchaseModalProps {
     isOpen: boolean;
     onClose: () => void;
     package: DataPackage | null;
+    onSuccess?: () => void;
+    useWallet?: boolean; // If true, use wallet-based purchase for authenticated users
 }
 
 type Step = 'phone' | 'payment' | 'success';
@@ -66,7 +73,13 @@ declare global {
     }
 }
 
-export default function PurchaseModal({ isOpen, onClose, package: pkg }: PurchaseModalProps) {
+export default function PurchaseModal({
+    isOpen,
+    onClose,
+    package: pkg,
+    onSuccess,
+    useWallet = true,
+}: PurchaseModalProps) {
     const [step, setStep] = useState<Step>('phone');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [detectedNetwork, setDetectedNetwork] = useState<string | null>(null);
@@ -232,58 +245,118 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
         setError(null);
 
         try {
-            // Initialize payment with backend
-            const purchaseData: GuestPurchaseRequest = {
-                package_id: pkg.id,
-                network: pkg.network,
-                phone_number: phoneNumber,
-                payment_method: 'direct',
-            };
-
-            const result = await initiateDirectPayment(purchaseData);
-
-            // Wait for Paystack to load if not already loaded
-            if (!paystackLoaded) {
-                await new Promise((resolve) => {
-                    let attempts = 0;
-                    const maxAttempts = 50; // 5 seconds max wait
-                    const checkPaystack = setInterval(() => {
-                        attempts++;
-                        if (window.PaystackPop) {
-                            clearInterval(checkPaystack);
-                            setPaystackLoaded(true);
-                            resolve(true);
-                        } else if (attempts >= maxAttempts) {
-                            clearInterval(checkPaystack);
-                            resolve(false);
-                        }
-                    }, 100);
-                });
-            }
-
-            if (result.transaction_reference) {
-                setTransactionReference(result.transaction_reference);
+            // Use wallet-based purchase for authenticated users if useWallet is true
+            if (useWallet) {
+                // Generate idempotency key for wallet purchase
+                const idempotencyKey = `WALLET-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 
-                // Handle mobile money payment (with display instructions)
-                if (result.payment_method === 'mobile_money' && result.display) {
-                    setPaymentDisplay(result.display);
-                    setStep('payment');
+                const purchaseData: WalletPurchaseRequest = {
+                    package_id: pkg.id,
+                    network: pkg.network,
+                    phone_number: phoneNumber,
+                    idempotency_key: idempotencyKey,
+                };
+
+                const result = await purchaseWithWallet(purchaseData);
+
+                // If idempotent and already successful, go to success step
+                if (result.idempotent && result.status === 'success') {
+                    setTransactionReference(result.transaction_reference);
+                    setStep('success');
                     setLoading(false);
-                } 
-                // Handle card payment (with iframe URL)
-                else if (result.payment_url) {
-                    setPaymentUrl(result.payment_url);
-                    setStep('payment');
-                    setLoading(false);
-                } else {
-                    throw new Error('Payment initialization failed. No payment URL or instructions provided.');
+                    if (onSuccess) {
+                        onSuccess();
+                    }
+                    return;
                 }
-                // Polling will be handled by useEffect
+
+                // If pending, show pending message
+                if (result.status === 'pending') {
+                    setError('Transaction is already being processed. Please wait.');
+                    setLoading(false);
+                    return;
+                }
+
+                // If requires funding, show error
+                if (result.requires_funding) {
+                    setError(
+                        `Insufficient wallet balance. You need GHS ${result.required_amount?.toFixed(2)} but have GHS ${result.current_balance?.toFixed(2)}.`
+                    );
+                    setLoading(false);
+                    return;
+                }
+
+                // Success - go directly to success step
+                if (result.transaction_reference) {
+                    setTransactionReference(result.transaction_reference);
+                    setStep('success');
+                    setLoading(false);
+                    if (onSuccess) {
+                        onSuccess();
+                    }
+                    return;
+                }
             } else {
-                throw new Error('Payment initialization failed. No transaction reference received.');
+                // Guest purchase flow (direct payment)
+                const purchaseData: GuestPurchaseRequest = {
+                    package_id: pkg.id,
+                    network: pkg.network,
+                    phone_number: phoneNumber,
+                    payment_method: 'direct',
+                };
+
+                const result = await initiateDirectPayment(purchaseData);
+
+                // Wait for Paystack to load if not already loaded
+                if (!paystackLoaded) {
+                    await new Promise((resolve) => {
+                        let attempts = 0;
+                        const maxAttempts = 50; // 5 seconds max wait
+                        const checkPaystack = setInterval(() => {
+                            attempts++;
+                            if (window.PaystackPop) {
+                                clearInterval(checkPaystack);
+                                setPaystackLoaded(true);
+                                resolve(true);
+                            } else if (attempts >= maxAttempts) {
+                                clearInterval(checkPaystack);
+                                resolve(false);
+                            }
+                        }, 100);
+                    });
+                }
+
+                if (result.transaction_reference) {
+                    setTransactionReference(result.transaction_reference);
+                    
+                    // Handle mobile money payment (with display instructions)
+                    if (result.payment_method === 'mobile_money' && result.display) {
+                        setPaymentDisplay(result.display);
+                        setStep('payment');
+                        setLoading(false);
+                    } 
+                    // Handle card payment (with iframe URL)
+                    else if (result.payment_url) {
+                        setPaymentUrl(result.payment_url);
+                        setStep('payment');
+                        setLoading(false);
+                    } else {
+                        throw new Error('Payment initialization failed. No payment URL or instructions provided.');
+                    }
+                    // Polling will be handled by useEffect
+                } else {
+                    throw new Error('Payment initialization failed. No transaction reference received.');
+                }
             }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to initialize payment');
+        } catch (err: any) {
+            // Handle error response with requires_funding
+            if (err.requires_funding) {
+                setError(
+                    `Insufficient wallet balance. You need GHS ${err.required_amount?.toFixed(2)} but have GHS ${err.current_balance?.toFixed(2)}.`
+                );
+            } else {
+                setError(err.message || err instanceof Error ? err.message : 'Failed to initialize payment');
+            }
             setStep('phone');
             setLoading(false);
         }
@@ -291,9 +364,11 @@ export default function PurchaseModal({ isOpen, onClose, package: pkg }: Purchas
 
     const handleClose = () => {
         if (step === 'success') {
-            // If on success step, close and reload to show updated state
+            // If on success step, call onSuccess callback if provided
+            if (onSuccess) {
+                onSuccess();
+            }
             onClose();
-            window.location.reload();
         } else {
             onClose();
         }
