@@ -11,21 +11,64 @@ use Illuminate\Support\Facades\DB;
 class WalletService
 {
     /**
+     * Recalculate wallet balances from wallet transactions to ensure consistency.
+     */
+    protected function recalcWallet(User $user): Wallet
+    {
+        $wallet = Wallet::firstOrCreate([
+            'user_id' => $user->id,
+        ], [
+            'balance' => 0.00,
+            'total_funded' => 0.00,
+            'total_spent' => 0.00,
+        ]);
+
+        // Calculate totals from wallet transactions
+        // Only count deductions with status='completed' (not 'refunded')
+        // Count refunds and funding with status='completed'
+        $totals = WalletTransaction::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->selectRaw("
+                SUM(CASE WHEN type = 'funding' THEN amount ELSE 0 END) AS total_funding,
+                SUM(CASE WHEN type = 'refund' THEN amount ELSE 0 END) AS total_refund,
+                SUM(CASE WHEN type = 'deduction' THEN amount ELSE 0 END) AS total_deduction
+            ")
+            ->first();
+
+        $totalFunding = (float) ($totals->total_funding ?? 0);
+        $totalRefund = (float) ($totals->total_refund ?? 0);
+        $totalDeduction = (float) ($totals->total_deduction ?? 0);
+
+        // If no wallet transactions exist, fall back to Transaction records for funding (backward compatibility)
+        if ($totalFunding == 0) {
+            $fundingFromTransactions = Transaction::where('user_id', $user->id)
+                ->where('type', 'funding')
+                ->where('status', 'success')
+                ->sum('amount');
+            $totalFunding = (float) $fundingFromTransactions;
+        }
+
+        // Balance = funding + refunds - deductions (only completed deductions count)
+        $balance = $totalFunding + $totalRefund - $totalDeduction;
+        // Total spent = deductions that weren't refunded
+        $totalSpent = max(0, $totalDeduction - $totalRefund);
+
+        $wallet->update([
+            'balance' => $balance,
+            'total_funded' => $totalFunding,
+            'total_spent' => $totalSpent,
+        ]);
+
+        return $wallet->fresh();
+    }
+
+    /**
      * Get wallet balance and stats for user.
      */
     public function getWallet(User $user): array
     {
-        $wallet = $user->wallet;
-
-        if (! $wallet) {
-            // Create wallet if it doesn't exist
-            $wallet = Wallet::create([
-                'user_id' => $user->id,
-                'balance' => 0.00,
-                'total_funded' => 0.00,
-                'total_spent' => 0.00,
-            ]);
-        }
+        $wallet = $this->recalcWallet($user);
 
         return [
             'balance' => $wallet->balance,
@@ -68,7 +111,13 @@ class WalletService
                 ->first();
 
             if (! $wallet) {
-                throw new \Exception('Wallet not found');
+                // Create wallet if it doesn't exist
+                $wallet = Wallet::create([
+                    'user_id' => $user->id,
+                    'balance' => 0.00,
+                    'total_funded' => 0.00,
+                    'total_spent' => 0.00,
+                ]);
             }
 
             if ($wallet->balance < $amount) {
@@ -143,15 +192,17 @@ class WalletService
             $wallet->save();
 
             // Update existing transaction if it exists, otherwise create new one
+            $transaction = null;
             if ($existingTransaction) {
                 $existingTransaction->update([
                     'status' => 'success',
                     'amount' => $amount,
                     ...$metadata,
                 ]);
+                $transaction = $existingTransaction;
             } else {
                 // Create transaction record
-                Transaction::create([
+                $transaction = Transaction::create([
                     'user_id' => $user->id,
                     'reference' => $reference,
                     'type' => 'funding',
@@ -160,6 +211,23 @@ class WalletService
                     ...$metadata,
                 ]);
             }
+
+            // Create wallet transaction record for funding
+            WalletTransaction::firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'reference' => 'WALLET-FUND-'.$reference,
+                ],
+                [
+                    'transaction_id' => $transaction->id,
+                    'type' => 'funding',
+                    'amount' => $amount,
+                    'status' => 'completed',
+                    'original_transaction_reference' => $reference,
+                    'description' => 'Wallet funding',
+                    'metadata' => $metadata,
+                ]
+            );
         });
     }
 
@@ -196,7 +264,13 @@ class WalletService
                 ->first();
 
             if (! $wallet) {
-                throw new \Exception('Wallet not found');
+                // Create wallet if it doesn't exist
+                $wallet = Wallet::create([
+                    'user_id' => $user->id,
+                    'balance' => 0.00,
+                    'total_funded' => 0.00,
+                    'total_spent' => 0.00,
+                ]);
             }
 
             // Refund the amount
@@ -242,6 +316,9 @@ class WalletService
                     'status' => 'refunded',
                 ]);
             }
+
+            // Recalculate wallet to ensure accurate balance after refund
+            $this->recalcWallet($user);
         });
     }
 }

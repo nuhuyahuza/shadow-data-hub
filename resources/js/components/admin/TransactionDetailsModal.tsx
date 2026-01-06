@@ -111,11 +111,7 @@ export default function TransactionDetailsModal({
         setRefunding(true);
         try {
             await onRefund(transaction.id);
-            addToast({
-                title: 'Refund Processed',
-                description: 'The user wallet has been refunded successfully',
-                variant: 'success',
-            });
+            // Don't show toast here - let the parent component handle it to avoid duplicates
             // Refresh transaction data by closing and reopening
             onClose();
         } catch (error) {

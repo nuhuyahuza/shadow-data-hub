@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { History, CheckCircle2, XCircle, Clock, Eye, RefreshCw } from 'lucide-react';
 import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
+import { useToast } from '@/components/ui/toast';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -50,10 +51,12 @@ interface Transaction extends Record<string, unknown> {
 }
 
 export default function AdminTransactions() {
+    const { addToast } = useToast();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const refundingRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
         const fetchAllTransactions = async () => {
@@ -269,29 +272,50 @@ export default function AdminTransactions() {
     };
 
     const handleRefund = async (transactionId: number) => {
-        const response = await fetch(`/api/admin/transactions/${transactionId}/refund`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-            credentials: 'include',
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to process refund');
+        // Prevent duplicate refund attempts
+        if (refundingRef.current.has(transactionId)) {
+            return;
         }
 
-        // Update the transaction in the local state to refunded
-        setTransactions((prev) =>
-            prev.map((t) => (t.id === transactionId ? { ...t, status: 'refunded' } : t))
-        );
-        
-        // Update selected transaction if it's the one being refunded
-        if (selectedTransaction && selectedTransaction.id === transactionId) {
-            setSelectedTransaction({ ...selectedTransaction, status: 'refunded' });
+        refundingRef.current.add(transactionId);
+
+        try {
+            const response = await fetch(`/api/admin/transactions/${transactionId}/refund`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to process refund');
+            }
+
+            // Update the transaction in the local state to refunded
+            setTransactions((prev) =>
+                prev.map((t) => (t.id === transactionId ? { ...t, status: 'refunded' } : t))
+            );
+            
+            // Update selected transaction if it's the one being refunded
+            if (selectedTransaction && selectedTransaction.id === transactionId) {
+                setSelectedTransaction({ ...selectedTransaction, status: 'refunded' });
+            }
+
+            // Show success toast only once
+            addToast({
+                title: 'Refund Processed',
+                description: 'The user wallet has been refunded successfully',
+                variant: 'success',
+            });
+        } finally {
+            // Remove from set after a delay to allow for UI updates
+            setTimeout(() => {
+                refundingRef.current.delete(transactionId);
+            }, 1000);
         }
     };
 

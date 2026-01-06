@@ -88,10 +88,6 @@ export default function PurchaseModal({
     const user = page.props.auth?.user;
     // Check if user is authenticated and is admin/agent
     const isAdminOrAgent = user && (user.role === 'admin' || user.role === 'agent');
-    const isLocalEnv = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      window.location.hostname.includes('localhost') ||
-                      window.location.hostname.includes('127.0.0.1');
 
     const [step, setStep] = useState<Step>('phone');
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -108,11 +104,11 @@ export default function PurchaseModal({
         message_prompt?: string;
         timer?: number;
     } | null>(null);
-    const [markingComplete, setMarkingComplete] = useState(false);
     const iframeContainerRef = useRef<HTMLDivElement>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isPollingRef = useRef<boolean>(false);
     const toastShownRef = useRef<string | null>(null);
+    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Load Paystack script
     useEffect(() => {
@@ -156,14 +152,21 @@ export default function PurchaseModal({
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
             }
+            // Clear close timeout
+            if (closeTimeoutRef.current) {
+                clearTimeout(closeTimeoutRef.current);
+                closeTimeoutRef.current = null;
+            }
             // Reset toast tracking
             toastShownRef.current = null;
         }
     }, [isOpen]);
 
-    // Show toast notification when payment processing starts (for regular users)
+    // Show toast notification when payment processing starts (only for direct payments, not wallet purchases)
     useEffect(() => {
-        if (step === 'payment' && transactionReference && !isAdminOrAgent) {
+        // Only show toast for direct payments (when paymentUrl or paymentDisplay exists)
+        // Wallet purchases are instant and go directly to success
+        if (step === 'payment' && transactionReference && (paymentUrl || paymentDisplay) && !isAdminOrAgent) {
             // Show toast only once per transaction reference
             if (toastShownRef.current !== transactionReference) {
                 toastShownRef.current = transactionReference;
@@ -174,9 +177,9 @@ export default function PurchaseModal({
                 });
             }
         }
-    }, [step, transactionReference, isAdminOrAgent, addToast]);
+    }, [step, transactionReference, paymentUrl, paymentDisplay, isAdminOrAgent, addToast]);
 
-    // Poll for payment status when in payment step
+    // Poll for payment status when in payment step (only for direct payment, not wallet purchases)
     useEffect(() => {
         // Clear any existing interval first
         if (pollIntervalRef.current) {
@@ -185,7 +188,9 @@ export default function PurchaseModal({
         }
         isPollingRef.current = false;
 
-        if (step === 'payment' && transactionReference && !isPollingRef.current) {
+        // Only poll for direct payments (when paymentUrl or paymentDisplay exists)
+        // Wallet purchases are instant and don't need polling
+        if (step === 'payment' && transactionReference && (paymentUrl || paymentDisplay) && !isPollingRef.current) {
             isPollingRef.current = true;
 
             // Start polling immediately, then every 3 seconds
@@ -212,6 +217,20 @@ export default function PurchaseModal({
                                 pollIntervalRef.current = null;
                             }
                             setStep('success');
+                            // Show success toast
+                            addToast({
+                                title: 'Transaction Successful',
+                                description: 'Your data bundle purchase was successful',
+                                variant: 'success',
+                            });
+                            // Call onSuccess callback
+                            if (onSuccess) {
+                                onSuccess();
+                            }
+                            // Auto-close modal after 3 seconds
+                            closeTimeoutRef.current = setTimeout(() => {
+                                handleClose();
+                            }, 3000);
                         } else if (statusData.status === 'failed') {
                             // Stop polling
                             isPollingRef.current = false;
@@ -246,7 +265,8 @@ export default function PurchaseModal({
             // Not in payment step, ensure polling is stopped
             isPollingRef.current = false;
         }
-    }, [step, transactionReference]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step, transactionReference, paymentUrl, paymentDisplay]);
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -291,24 +311,25 @@ export default function PurchaseModal({
 
                 const result = await purchaseWithWallet(purchaseData);
 
-                // If idempotent and already successful, go to success step
+                // If idempotent and already successful, show success step
                 if (result.idempotent && result.status === 'success') {
                     setTransactionReference(result.transaction_reference);
                     setStep('success');
                     setLoading(false);
+                    // Show success toast
+                    addToast({
+                        title: 'Transaction Successful',
+                        description: 'Your data bundle purchase was successful',
+                        variant: 'success',
+                    });
+                    // Call onSuccess callback
                     if (onSuccess) {
                         onSuccess();
                     }
-                    return;
-                }
-
-                // If pending (idempotent or manual processing), set reference and poll for status
-                if (result.status === 'pending') {
-                    setTransactionReference(result.transaction_reference);
-                    // Move to payment step to show waiting state and start polling
-                    setStep('payment');
-                    setLoading(false);
-                    // Polling will be handled by useEffect
+                    // Auto-close modal after 3 seconds
+                    closeTimeoutRef.current = setTimeout(() => {
+                        handleClose();
+                    }, 3000);
                     return;
                 }
 
@@ -321,14 +342,34 @@ export default function PurchaseModal({
                     return;
                 }
 
-                // Success - go directly to success step
-                if (result.transaction_reference) {
+                // Wallet purchases are instant - either success or failure
+                // If pending, it means manual processing is required, but money is already deducted
+                // Show success message since payment was successful
+                if (result.status === 'pending' || result.status === 'success') {
                     setTransactionReference(result.transaction_reference);
                     setStep('success');
                     setLoading(false);
+                    // Show success toast
+                    addToast({
+                        title: 'Transaction Successful',
+                        description: 'Your data bundle purchase was successful',
+                        variant: 'success',
+                    });
+                    // Call onSuccess callback
                     if (onSuccess) {
                         onSuccess();
                     }
+                    // Auto-close modal after 3 seconds
+                    closeTimeoutRef.current = setTimeout(() => {
+                        handleClose();
+                    }, 3000);
+                    return;
+                }
+
+                // If we have a transaction reference but status is not success/pending, it failed
+                if (result.transaction_reference) {
+                    setError(result.message || 'Purchase failed. Please try again.');
+                    setLoading(false);
                     return;
                 }
             } else {
@@ -399,15 +440,25 @@ export default function PurchaseModal({
     };
 
     const handleClose = () => {
-        if (step === 'success') {
-            // If on success step, call onSuccess callback if provided
-            if (onSuccess) {
-                onSuccess();
-            }
-            onClose();
-        } else {
-            onClose();
+        // Stop polling
+        isPollingRef.current = false;
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
         }
+        // Clear close timeout
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+        }
+        
+        // Call onSuccess if on success step
+        if (step === 'success' && onSuccess) {
+            onSuccess();
+        }
+        
+        // Close modal first - state will be reset in useEffect when isOpen becomes false
+        onClose();
     };
 
     if (!pkg) {
@@ -415,13 +466,17 @@ export default function PurchaseModal({
     }
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) {
+                handleClose();
+            }
+        }}>
             <DialogContent className="sm:max-w-md backdrop-blur-sm bg-white/95 dark:bg-gray-900/95">
                 <DialogHeader>
                     <DialogTitle>
                         {step === 'phone' && 'Complete Your Purchase'}
                         {step === 'payment' && 'Complete Payment'}
-                        {step === 'success' && 'Payment Successful'}
+                        {step === 'success' && 'Transaction Successful'}
                     </DialogTitle>
                     <DialogDescription>
                         {step === 'phone' && 'Enter the phone number to receive the data bundle'}
@@ -513,92 +568,8 @@ export default function PurchaseModal({
                             </div>
                         </div>
 
-                        {/* Show waiting state if transaction is pending (wallet purchase) */}
-                        {!paymentDisplay && !paymentUrl && transactionReference ? (
-                            <div className="space-y-4">
-                                <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-                                    <AlertTitle className="text-yellow-800 dark:text-yellow-200">
-                                        Processing Transaction
-                                    </AlertTitle>
-                                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
-                                        <div className="space-y-3 mt-2">
-                                            <p>
-                                                Your transaction is being processed. Please wait while we confirm your payment.
-                                            </p>
-                                            {transactionReference && (
-                                                <p className="text-xs font-mono">
-                                                    Reference: {transactionReference}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </AlertDescription>
-                                </Alert>
-
-                                <div className="flex items-center justify-center py-4">
-                                    <Spinner />
-                                </div>
-
-                                <p className="text-sm text-center text-muted-foreground">
-                                    Waiting for transaction confirmation...
-                                </p>
-
-                                {/* Payment Completed Button (for agents/admins in local env) */}
-                                {isAdminOrAgent && isLocalEnv && transactionReference && (
-                                    <Button
-                                        onClick={async () => {
-                                            if (!transactionReference) return;
-                                            
-                                            setMarkingComplete(true);
-                                            setError(null);
-                                            
-                                            try {
-                                                const response = await fetch(
-                                                    `/api/transactions/${transactionReference}/complete`,
-                                                    {
-                                                        method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                                        },
-                                                        credentials: 'include',
-                                                    }
-                                                );
-
-                                                if (response.ok) {
-                                                    addToast({
-                                                        title: 'Payment Completed',
-                                                        description: 'Transaction has been marked as complete',
-                                                        variant: 'success',
-                                                    });
-                                                    // Move to success step
-                                                    setStep('success');
-                                                    if (onSuccess) {
-                                                        onSuccess();
-                                                    }
-                                                    // Close modal after a brief delay
-                                                    setTimeout(() => {
-                                                        handleClose();
-                                                    }, 1500);
-                                                } else {
-                                                    const errorData = await response.json();
-                                                    setError(errorData.message || 'Failed to mark transaction as complete');
-                                                }
-                                            } catch (err: unknown) {
-                                                const error = err as { message?: string };
-                                                setError(error.message || (err instanceof Error ? err.message : 'Failed to mark transaction as complete'));
-                                            } finally {
-                                                setMarkingComplete(false);
-                                            }
-                                        }}
-                                        className="w-full"
-                                        disabled={markingComplete}
-                                    >
-                                        {markingComplete && <Spinner />}
-                                        {markingComplete ? 'Completing...' : 'Payment Completed (Test)'}
-                                    </Button>
-                                )}
-                            </div>
-                        ) : paymentDisplay ? (
+                        {/* Show waiting state only for direct payments (mobile money or card) */}
+                        {paymentDisplay ? (
                             /* Mobile Money Payment Instructions */
                             <div className="space-y-4">
                                 <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
@@ -662,72 +633,21 @@ export default function PurchaseModal({
                     </div>
                 )}
 
-                <div className="flex gap-2">
-                    {isAdminOrAgent && isLocalEnv && transactionReference && (
+                {/* Only show cancel button for direct payments (not wallet purchases) */}
+                {(paymentUrl || paymentDisplay) && (
+                    <div className="flex gap-2">
                         <Button
-                            onClick={async () => {
-                                if (!transactionReference) return;
-                                
-                                setMarkingComplete(true);
-                                setError(null);
-                                
-                                try {
-                                    const response = await fetch(
-                                        `/api/transactions/${transactionReference}/complete`,
-                                        {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                            },
-                                            credentials: 'include',
-                                        }
-                                    );
-
-                                    if (response.ok) {
-                                        addToast({
-                                            title: 'Payment Completed',
-                                            description: 'Transaction has been marked as complete',
-                                            variant: 'success',
-                                        });
-                                        // Move to success step
-                                        setStep('success');
-                                        if (onSuccess) {
-                                            onSuccess();
-                                        }
-                                        // Close modal after a brief delay
-                                        setTimeout(() => {
-                                            handleClose();
-                                        }, 1500);
-                                    } else {
-                                        const errorData = await response.json();
-                                        setError(errorData.message || 'Failed to mark transaction as complete');
-                                    }
-                                } catch (err: unknown) {
-                                    const error = err as { message?: string };
-                                    setError(error.message || (err instanceof Error ? err.message : 'Failed to mark transaction as complete'));
-                                } finally {
-                                    setMarkingComplete(false);
-                                }
+                            variant="outline"
+                            onClick={() => {
+                                setStep('phone');
+                                setLoading(false);
                             }}
-                            disabled={markingComplete}
-                            className="flex-1"
+                            className="w-full"
                         >
-                            {markingComplete && <Spinner />}
-                            {markingComplete ? 'Completing...' : 'Payment Completed (Test)'}
+                            Cancel Payment
                         </Button>
-                    )}
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            setStep('phone');
-                            setLoading(false);
-                        }}
-                        className={isAdminOrAgent && isLocalEnv && transactionReference ? 'flex-1' : 'w-full'}
-                    >
-                        Cancel Payment
-                    </Button>
-                </div>
+                    </div>
+                )}
                     </div>
                 ) : (
                     <div className="space-y-6">
@@ -777,9 +697,14 @@ export default function PurchaseModal({
                             </div>
                         </div>
 
-                        <Button onClick={handleClose} className="w-full">
-                            Close
-                        </Button>
+                        <div className="flex flex-col items-center gap-3">
+                            <p className="text-sm text-center text-muted-foreground">
+                                This window will close automatically in a few seconds...
+                            </p>
+                            <Button onClick={handleClose} variant="outline" className="w-full">
+                                Close
+                            </Button>
+                        </div>
                     </div>
                 )}
             </DialogContent>

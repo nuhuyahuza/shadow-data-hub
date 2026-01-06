@@ -59,6 +59,13 @@ class TransactionController extends Controller
             ], 422);
         }
 
+        // Check if transaction has a user (must be authenticated user, not guest)
+        if (! $transaction->user_id || ! $transaction->user) {
+            return response()->json([
+                'message' => 'Cannot refund guest transactions. Only authenticated user transactions can be refunded.',
+            ], 422);
+        }
+
         try {
             $this->walletService->refund(
                 $transaction->user,
