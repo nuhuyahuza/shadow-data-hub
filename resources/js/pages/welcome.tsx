@@ -2,7 +2,7 @@ import { dashboard, login, phoneLogin } from '@/routes';
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { Search, Wifi, Filter } from 'lucide-react';
+import { Search, Wifi, Filter, Package, Zap, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getNetworkName, getNetworkColor } from '@/services/authService';
@@ -272,40 +272,98 @@ interface PackageCardProps {
 }
 
 function PackageCard({ pkg, onSelect }: PackageCardProps) {
-    return (
-        <div className="group relative overflow-hidden rounded-lg border border-[#19140035] bg-white transition-all hover:shadow-lg dark:border-[#3E3E3A] dark:bg-[#161615]">
-            <div className="p-6">
-                <div className="mb-4 flex items-start justify-between">
-                    <div>
-                        <h4 className="text-lg font-semibold">{pkg.name}</h4>
-                        <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                            {pkg.data_size}
-                        </p>
-                    </div>
-                    <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium text-white ${getNetworkColor(pkg.network)}`}
-                    >
-                        {getNetworkName(pkg.network)}
-                    </span>
-                </div>
+    const networkColor = getNetworkColor(pkg.network);
+    const networkName = getNetworkName(pkg.network);
+    
+    // Get gradient colors based on network
+    const getGradientColors = (network: string) => {
+        switch (network) {
+            case 'mtn':
+                return 'from-yellow-50 via-yellow-100/50 to-white dark:from-yellow-950/20 dark:via-yellow-900/10 dark:to-[#161615]';
+            case 'telecel':
+                return 'from-red-50 via-red-100/50 to-white dark:from-red-950/20 dark:via-red-900/10 dark:to-[#161615]';
+            case 'airteltigo':
+                return 'from-blue-50 via-blue-100/50 to-white dark:from-blue-950/20 dark:via-blue-900/10 dark:to-[#161615]';
+            default:
+                return 'from-gray-50 via-gray-100/50 to-white dark:from-gray-950/20 dark:via-gray-900/10 dark:to-[#161615]';
+        }
+    };
 
-                <div className="mb-4 space-y-2">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold">
-                            GHS {Number(pkg.price).toFixed(2)}
+    const gradientColors = getGradientColors(pkg.network);
+
+    return (
+        <div className={`group relative overflow-hidden rounded-xl border border-[#19140035] bg-gradient-to-br ${gradientColors} transition-all duration-300 hover:shadow-2xl hover:shadow-[#19140035]/20 hover:-translate-y-1 hover:border-[#1915014a] dark:border-[#3E3E3A] dark:hover:border-[#62605b] dark:hover:shadow-[#3E3E3A]/30`}>
+            {/* Decorative background pattern */}
+            <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#1b1b18] dark:bg-[#EDEDEC] blur-2xl"></div>
+                <div className="absolute -bottom-4 -left-4 h-32 w-32 rounded-full bg-[#1b1b18] dark:bg-[#EDEDEC] blur-3xl"></div>
+            </div>
+
+            <div className="relative p-6">
+                {/* Network Badge with Icon */}
+                <div className="mb-5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className={`rounded-lg ${networkColor} p-1.5`}>
+                            <Wifi className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold text-white shadow-sm ${networkColor}`}
+                        >
+                            {networkName}
                         </span>
                     </div>
-                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                        Valid for {pkg.validity}
-                    </p>
+                    <Package className="h-5 w-5 text-[#706f6c] dark:text-[#A1A09A] opacity-50 group-hover:opacity-100 transition-opacity" />
+                </div>
+
+                {/* Data Size - Prominent with Icon */}
+                <div className="mb-5">
+                    <div className="flex items-start gap-3">
+                        <div className={`rounded-lg ${networkColor} p-2 mt-1`}>
+                            <Zap className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <p className="text-3xl font-bold text-[#1b1b18] dark:text-[#EDEDEC] leading-tight">
+                                {pkg.data_size}
+                            </p>
+                            <p className="text-sm text-[#706f6c] dark:text-[#A1A09A] mt-1.5 font-medium">
+                                {pkg.name}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Price - Clear and Prominent */}
+                <div className="mb-5 rounded-lg border border-[#19140035]/50 bg-white/50 p-4 backdrop-blur-sm dark:border-[#3E3E3A]/50 dark:bg-[#161615]/50">
+                    <div className="flex items-baseline justify-between">
+                        <div className="flex-1">
+                            <p className="text-xs font-medium text-[#706f6c] dark:text-[#A1A09A] mb-1.5 uppercase tracking-wide">
+                                Price
+                            </p>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-semibold text-[#706f6c] dark:text-[#A1A09A]">GHS</span>
+                                <span className="text-4xl font-bold text-[#1b1b18] dark:text-[#EDEDEC]">
+                                    {Number(pkg.price).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-1.5 pt-3 border-t border-[#19140035]/30 dark:border-[#3E3E3A]/30">
+                        <Clock className="h-3.5 w-3.5 text-[#706f6c] dark:text-[#A1A09A]" />
+                        <p className="text-xs text-[#706f6c] dark:text-[#A1A09A] font-medium">
+                            Valid for {pkg.validity}
+                        </p>
+                    </div>
                 </div>
 
                 <Button
                     onClick={() => onSelect(pkg)}
-                    className="w-full"
+                    className={`w-full group/btn ${networkColor} hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg`}
                     variant="default"
                 >
-                    Buy Now
+                    <span className="flex items-center justify-center gap-2">
+                        Buy Now
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                    </span>
                 </Button>
             </div>
         </div>

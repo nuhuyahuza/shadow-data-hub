@@ -209,8 +209,8 @@ class OtpService
         $phone = preg_replace('/^\+?233/', '', $phone);
         $phone = ltrim($phone, '0');
 
-        // MTN prefixes: 24, 54, 55, 59
-        if (preg_match('/^(24|54|55|59)/', $phone)) {
+        // MTN prefixes: 24, 54, 55, 59, 53 (after removing leading 0: 024->24, 053->53, 054->54, 055->55, 059->59)
+        if (preg_match('/^(24|54|55|59|53)/', $phone)) {
             return 'mtn';
         }
 
