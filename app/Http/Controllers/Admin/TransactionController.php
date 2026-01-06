@@ -45,21 +45,37 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::with('user')->findOrFail($id);
 
-        if ($transaction->status !== 'failed') {
+        // Only allow refunding failed or pending transactions that were paid via wallet
+        if (! in_array($transaction->status, ['failed', 'pending'])) {
             return response()->json([
-                'message' => 'Can only refund failed transactions',
+                'message' => 'Can only refund failed or pending transactions',
             ], 422);
         }
 
-        $this->walletService->refund(
-            $transaction->user,
-            $transaction->amount,
-            $transaction->reference
-        );
+        // Check if transaction was paid via wallet (has wallet deduction)
+        if ($transaction->type !== 'purchase') {
+            return response()->json([
+                'message' => 'Can only refund purchase transactions',
+            ], 422);
+        }
 
-        return response()->json([
-            'message' => 'Refund processed successfully',
-        ]);
+        try {
+            $this->walletService->refund(
+                $transaction->user,
+                $transaction->amount,
+                $transaction->reference,
+                $transaction
+            );
+
+            return response()->json([
+                'message' => 'Refund processed successfully',
+                'transaction' => $transaction->fresh(['user', 'package']),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**
@@ -78,10 +94,16 @@ class TransactionController extends Controller
     public function updateStatus(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'in:pending,success,failed,cancelled'],
+            'status' => ['required', 'in:pending,success,failed,cancelled,refunded'],
         ]);
 
         $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+
+        // If marking as failed and it was a wallet purchase, offer to refund
+        // But don't auto-refund - let admin decide
+        if ($validated['status'] === 'failed' && $transaction->type === 'purchase' && $transaction->status !== 'failed') {
+            // Just update status - refund must be done separately
+        }
 
         $transaction->update([
             'status' => $validated['status'],

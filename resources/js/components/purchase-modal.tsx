@@ -86,10 +86,12 @@ export default function PurchaseModal({
     const { addToast } = useToast();
     const page = usePage<SharedData>();
     const user = page.props.auth?.user;
-    const isAdminOrAgent = user?.role === 'admin' || user?.role === 'agent';
+    // Check if user is authenticated and is admin/agent
+    const isAdminOrAgent = user && (user.role === 'admin' || user.role === 'agent');
     const isLocalEnv = window.location.hostname === 'localhost' || 
                       window.location.hostname === '127.0.0.1' ||
-                      window.location.hostname.includes('localhost');
+                      window.location.hostname.includes('localhost') ||
+                      window.location.hostname.includes('127.0.0.1');
 
     const [step, setStep] = useState<Step>('phone');
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -110,6 +112,7 @@ export default function PurchaseModal({
     const iframeContainerRef = useRef<HTMLDivElement>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isPollingRef = useRef<boolean>(false);
+    const toastShownRef = useRef<string | null>(null);
 
     // Load Paystack script
     useEffect(() => {
@@ -153,8 +156,25 @@ export default function PurchaseModal({
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
             }
+            // Reset toast tracking
+            toastShownRef.current = null;
         }
     }, [isOpen]);
+
+    // Show toast notification when payment processing starts (for regular users)
+    useEffect(() => {
+        if (step === 'payment' && transactionReference && !isAdminOrAgent) {
+            // Show toast only once per transaction reference
+            if (toastShownRef.current !== transactionReference) {
+                toastShownRef.current = transactionReference;
+                addToast({
+                    title: 'Payment Processing',
+                    description: 'Your data will be credited shortly. Please wait while we confirm your payment.',
+                    variant: 'default',
+                });
+            }
+        }
+    }, [step, transactionReference, isAdminOrAgent, addToast]);
 
     // Poll for payment status when in payment step
     useEffect(() => {

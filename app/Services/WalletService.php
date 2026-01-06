@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 
 class WalletService
@@ -79,13 +80,26 @@ class WalletService
             $wallet->save();
 
             // Create transaction record
-            Transaction::create([
+            $transaction = Transaction::create([
                 'user_id' => $user->id,
                 'reference' => $reference,
                 'type' => 'purchase',
                 'amount' => $amount,
                 'status' => 'pending',
                 ...$metadata,
+            ]);
+
+            // Create wallet transaction record for deduction
+            WalletTransaction::create([
+                'user_id' => $user->id,
+                'transaction_id' => $transaction->id,
+                'reference' => 'WALLET-'.$reference,
+                'type' => 'deduction',
+                'amount' => $amount,
+                'status' => 'completed',
+                'original_transaction_reference' => $reference,
+                'description' => 'Wallet deduction for purchase',
+                'metadata' => $metadata,
             ]);
 
             return true;
@@ -150,31 +164,84 @@ class WalletService
     }
 
     /**
-     * Refund amount to wallet.
+     * Refund amount to wallet and mark original transaction as refunded.
      */
-    public function refund(User $user, float $amount, string $originalReference): void
+    public function refund(User $user, float $amount, string $originalReference, ?Transaction $originalTransaction = null): void
     {
-        DB::transaction(function () use ($user, $amount, $originalReference) {
+        DB::transaction(function () use ($user, $amount, $originalReference, $originalTransaction) {
+            // Find original transaction if not provided
+            if (! $originalTransaction) {
+                $originalTransaction = Transaction::where('reference', $originalReference)
+                    ->where('user_id', $user->id)
+                    ->where('type', 'purchase')
+                    ->first();
+            }
+
+            if (! $originalTransaction) {
+                throw new \Exception('Original transaction not found');
+            }
+
+            // Check if already refunded
+            $existingRefund = WalletTransaction::where('original_transaction_reference', $originalReference)
+                ->where('type', 'refund')
+                ->where('status', 'completed')
+                ->first();
+
+            if ($existingRefund) {
+                throw new \Exception('Transaction already refunded');
+            }
+
             $wallet = Wallet::where('user_id', $user->id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $wallet) {
-                return;
+                throw new \Exception('Wallet not found');
             }
 
+            // Refund the amount
             $wallet->balance += $amount;
             $wallet->total_spent -= $amount;
             $wallet->save();
 
-            // Create refund transaction record
-            Transaction::create([
-                'user_id' => $user->id,
-                'reference' => 'REFUND-'.substr($originalReference, -8),
-                'type' => 'funding',
-                'amount' => $amount,
-                'status' => 'success',
+            // Update original transaction status to refunded
+            $originalTransaction->update([
+                'status' => 'refunded',
+                'vendor_response' => array_merge(
+                    $originalTransaction->vendor_response ?? [],
+                    [
+                        'refunded_at' => now()->toIso8601String(),
+                        'refund_amount' => $amount,
+                    ]
+                ),
             ]);
+
+            // Create wallet transaction record for refund
+            WalletTransaction::create([
+                'user_id' => $user->id,
+                'transaction_id' => $originalTransaction->id,
+                'reference' => 'REFUND-'.substr($originalReference, -12),
+                'type' => 'refund',
+                'amount' => $amount,
+                'status' => 'completed',
+                'original_transaction_reference' => $originalReference,
+                'description' => 'Refund for failed transaction',
+                'metadata' => [
+                    'original_transaction_id' => $originalTransaction->id,
+                    'refunded_at' => now()->toIso8601String(),
+                ],
+            ]);
+
+            // Find and update the original deduction wallet transaction
+            $deductionTransaction = WalletTransaction::where('original_transaction_reference', $originalReference)
+                ->where('type', 'deduction')
+                ->first();
+
+            if ($deductionTransaction) {
+                $deductionTransaction->update([
+                    'status' => 'refunded',
+                ]);
+            }
         });
     }
 }

@@ -18,7 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { CheckCircle2, XCircle, Clock, Package, User, Phone, DollarSign, Calendar, Ban } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Package, User, Phone, DollarSign, Calendar, Ban, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 interface TransactionDetailsModalProps {
@@ -51,6 +51,7 @@ interface TransactionDetailsModalProps {
         updated_at: string;
     } | null;
     onStatusUpdate?: (transactionId: number, newStatus: string) => Promise<void>;
+    onRefund?: (transactionId: number) => Promise<void>;
     apiPrefix?: 'admin' | 'agent';
 }
 
@@ -59,11 +60,13 @@ export default function TransactionDetailsModal({
     onClose,
     transaction,
     onStatusUpdate,
+    onRefund,
     apiPrefix = 'admin',
 }: TransactionDetailsModalProps) {
     const { addToast } = useToast();
     const [selectedStatus, setSelectedStatus] = useState<string>(transaction?.status || '');
     const [updating, setUpdating] = useState(false);
+    const [refunding, setRefunding] = useState(false);
 
     // Update selected status when transaction changes
     useEffect(() => {
@@ -100,6 +103,32 @@ export default function TransactionDetailsModal({
         }
     };
 
+    const handleRefund = async () => {
+        if (!onRefund || !transaction) {
+            return;
+        }
+
+        setRefunding(true);
+        try {
+            await onRefund(transaction.id);
+            addToast({
+                title: 'Refund Processed',
+                description: 'The user wallet has been refunded successfully',
+                variant: 'success',
+            });
+            // Refresh transaction data by closing and reopening
+            onClose();
+        } catch (error) {
+            addToast({
+                title: 'Refund Failed',
+                description: error instanceof Error ? error.message : 'Failed to process refund',
+                variant: 'destructive',
+            });
+        } finally {
+            setRefunding(false);
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'success':
@@ -128,6 +157,13 @@ export default function TransactionDetailsModal({
                     <Badge variant="outline" className="bg-gray-500/10 text-gray-600 dark:text-gray-400">
                         <Ban className="h-3 w-3 mr-1" />
                         Cancelled
+                    </Badge>
+                );
+            case 'refunded':
+                return (
+                    <Badge variant="default" className="bg-blue-500">
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Refunded
                     </Badge>
                 );
             default:
@@ -309,7 +345,7 @@ export default function TransactionDetailsModal({
                                     <Select
                                         value={selectedStatus}
                                         onValueChange={setSelectedStatus}
-                                        disabled={updating}
+                                        disabled={updating || refunding}
                                     >
                                         <SelectTrigger className="flex-1">
                                             <SelectValue placeholder="Select status" />
@@ -339,17 +375,47 @@ export default function TransactionDetailsModal({
                                                     Cancelled
                                                 </div>
                                             </SelectItem>
+                                            <SelectItem value="refunded">
+                                                <div className="flex items-center gap-2">
+                                                    <RefreshCw className="h-4 w-4" />
+                                                    Refunded
+                                                </div>
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <Button
                                         onClick={handleStatusUpdate}
-                                        disabled={updating || selectedStatus === transaction.status}
+                                        disabled={updating || refunding || selectedStatus === transaction.status}
                                         size="sm"
                                     >
                                         {updating && <Spinner />}
                                         {updating ? 'Updating...' : 'Update Status'}
                                     </Button>
                                 </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Refund Button - Only show for failed/pending purchase transactions */}
+                    {onRefund && transaction.type === 'purchase' && 
+                     (transaction.status === 'failed' || transaction.status === 'pending') &&
+                     transaction.status !== 'refunded' && (
+                        <>
+                            <Separator />
+                            <div className="space-y-3">
+                                <div className="text-sm font-medium">Refund</div>
+                                <p className="text-sm text-muted-foreground">
+                                    Refund the user's wallet for this failed transaction. This will mark the transaction as refunded.
+                                </p>
+                                <Button
+                                    onClick={handleRefund}
+                                    disabled={refunding || updating}
+                                    variant="outline"
+                                    className="w-full"
+                                >
+                                    {refunding && <Spinner />}
+                                    {refunding ? 'Processing Refund...' : 'Refund to Wallet'}
+                                </Button>
                             </div>
                         </>
                     )}

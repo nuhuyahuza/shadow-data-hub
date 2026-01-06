@@ -5,7 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { History, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
+import { History, CheckCircle2, XCircle, Clock, Eye, RefreshCw } from 'lucide-react';
 import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
 import {
     DropdownMenu,
@@ -119,6 +119,13 @@ export default function AdminTransactions() {
                     <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
                         <Clock className="h-3 w-3 mr-1" />
                         Pending
+                    </Badge>
+                );
+            case 'refunded':
+                return (
+                    <Badge variant="default" className="bg-blue-500">
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Refunded
                     </Badge>
                 );
             default:
@@ -261,6 +268,33 @@ export default function AdminTransactions() {
         }
     };
 
+    const handleRefund = async (transactionId: number) => {
+        const response = await fetch(`/api/admin/transactions/${transactionId}/refund`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to process refund');
+        }
+
+        // Update the transaction in the local state to refunded
+        setTransactions((prev) =>
+            prev.map((t) => (t.id === transactionId ? { ...t, status: 'refunded' } : t))
+        );
+        
+        // Update selected transaction if it's the one being refunded
+        if (selectedTransaction && selectedTransaction.id === transactionId) {
+            setSelectedTransaction({ ...selectedTransaction, status: 'refunded' });
+        }
+    };
+
     const actions = (row: Transaction) => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -310,6 +344,7 @@ export default function AdminTransactions() {
                 }}
                 transaction={selectedTransaction}
                 onStatusUpdate={handleStatusUpdateInModal}
+                onRefund={handleRefund}
                 apiPrefix="admin"
             />
         </AppLayout>
