@@ -17,10 +17,11 @@ Route::prefix('guest')->middleware('throttle:20,1')->group(function () {
         ->middleware('throttle:30,1'); // 30 requests per minute per IP
 });
 
-Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+Route::middleware(['web', 'auth', 'throttle:60,1'])->group(function () {
     Route::prefix('wallet')->group(function () {
         Route::get('/', [WalletController::class, 'index']);
         Route::post('fund', [WalletController::class, 'fund'])->middleware('throttle:10,1');
+        Route::get('status/{reference}', [WalletController::class, 'checkStatus'])->middleware('throttle:30,1');
     });
 
     Route::post('data/purchase', [\App\Http\Controllers\DataPurchaseController::class, 'store'])

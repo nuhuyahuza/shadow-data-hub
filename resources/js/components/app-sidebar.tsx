@@ -49,11 +49,6 @@ export function AppSidebar() {
             icon: ShoppingCart,
         },
         {
-            title: 'Packages',
-            href: '/packages',
-            icon: Package,
-        },
-        {
             title: 'Wallet',
             href: '/wallet',
             icon: Wallet,

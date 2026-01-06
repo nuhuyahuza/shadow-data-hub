@@ -35,10 +35,28 @@ export default function Transactions() {
             filter === 'all'
                 ? '/api/transactions'
                 : `/api/transactions?status=${filter}`;
-        fetch(url)
+        fetch(url, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        })
             .then((res) => res.json())
             .then((data) => {
-                setTransactions(data.data || data);
+                // Handle paginated response
+                if (data.data && Array.isArray(data.data)) {
+                    setTransactions(data.data);
+                } else if (Array.isArray(data)) {
+                    setTransactions(data);
+                } else {
+                    setTransactions([]);
+                }
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error('Error loading transactions:', err);
+                setTransactions([]);
                 setLoading(false);
             });
     }, [filter]);
@@ -87,7 +105,13 @@ export default function Transactions() {
                             ))}
                         </div>
                         {loading ? (
-                            <p>Loading transactions...</p>
+                            <div className="text-center py-8">
+                                <p>Loading transactions...</p>
+                            </div>
+                        ) : transactions.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-muted-foreground">No transactions found</p>
+                            </div>
                         ) : (
                             <div className="space-y-2">
                                 {transactions.map((transaction) => (

@@ -169,7 +169,36 @@ class DirectPaymentService
         // Format phone number (remove leading 0, add country code if needed)
         $formattedPhone = preg_replace('/^0/', '233', preg_replace('/\D/', '', $phone));
 
-        $paystackUrl = 'https://api.paystack.co/charge/mobile_money';
+        // Check if we're in development/test mode
+        $isDevelopment = in_array(config('app.env'), ['local', 'development', 'testing']);
+
+        // In development mode, Paystack requires test mobile money numbers
+        // Paystack test numbers (with country code 233):
+        // MTN: 0551234987 -> 233551234987
+        // VODAFONE: 0201234567 -> 233201234567
+        // AIRTELTIGO: 0261234567 -> 233261234567
+        if ($isDevelopment) {
+            $testNumbers = [
+                'MTN' => '233551234987', // Paystack test number for MTN
+                'VODAFONE' => '233201234567', // Paystack test number for VODAFONE
+                'AIRTELTIGO' => '233261234567', // Paystack test number for AIRTELTIGO
+            ];
+
+            // Always use test number in development mode
+            $originalPhone = $formattedPhone;
+            $formattedPhone = $testNumbers[$provider] ?? $testNumbers['MTN'];
+
+            Log::info('Using Paystack test mobile money number for development', [
+                'app_env' => config('app.env'),
+                'is_development' => $isDevelopment,
+                'original_phone' => $phone,
+                'formatted_original' => $originalPhone,
+                'test_phone' => $formattedPhone,
+                'provider' => $provider,
+            ]);
+        }
+
+        $paystackUrl = 'https://api.paystack.co/charge';
         $paystackData = [
             'email' => $phone.'@datahub.gh',
             'amount' => $amount * 100, // Convert to pesewas

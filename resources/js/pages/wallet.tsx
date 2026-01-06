@@ -5,16 +5,9 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Wallet, Plus } from 'lucide-react';
+import WalletFundingModal from '@/components/wallet-funding-modal';
+import { getWallet } from '@/services/walletService';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -31,16 +24,18 @@ interface WalletProps {
     };
 }
 
-export default function WalletPage({ wallet }: WalletProps) {
-    const [amount, setAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('');
+export default function WalletPage({ wallet: initialWallet }: WalletProps) {
+    const [wallet, setWallet] = useState(initialWallet);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleFund = () => {
-        // TODO: Implement fund wallet API call
-        router.post('/api/wallet/fund', {
-            amount: parseFloat(amount),
-            payment_method: paymentMethod,
-        });
+    const handleSuccess = async () => {
+        // Refresh wallet balance after successful funding
+        try {
+            const updatedWallet = await getWallet();
+            setWallet(updatedWallet);
+        } catch (error) {
+            console.error('Failed to refresh wallet:', error);
+        }
     };
 
     return (
@@ -89,47 +84,26 @@ export default function WalletPage({ wallet }: WalletProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="amount">Amount (GHS)</Label>
-                                <Input
-                                    id="amount"
-                                    type="number"
-                                    min="1"
-                                    max="10000"
-                                    step="0.01"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    placeholder="Enter amount"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="payment_method">Payment Method</Label>
-                                <Select
-                                    value={paymentMethod}
-                                    onValueChange={setPaymentMethod}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select payment method" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="mtn_momo">MTN Mobile Money</SelectItem>
-                                        <SelectItem value="telecel_cash">Telecel Cash</SelectItem>
-                                        <SelectItem value="airteltigo_money">
-                                            AirtelTigo Money
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                Add funds to your wallet using Paystack. You can pay with card or
+                                mobile money.
+                            </p>
                             <Button
-                                onClick={handleFund}
+                                onClick={() => setIsModalOpen(true)}
                                 className="w-full"
-                                disabled={!amount || !paymentMethod}
                             >
+                                <Plus className="h-4 w-4 mr-2" />
                                 Fund Wallet
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
+
+                <WalletFundingModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSuccess={handleSuccess}
+                />
             </div>
         </AppLayout>
     );
