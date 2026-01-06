@@ -271,6 +271,10 @@ export default function WalletFundingModal({
                     if (onSuccess) {
                         onSuccess();
                     }
+                    // Auto-close modal after 2 seconds to show success message
+                    setTimeout(() => {
+                        handleClose();
+                    }, 2000);
                 } else if (statusResult.status === 'failed') {
                     clearInterval(pollIntervalRef.current!);
                     pollIntervalRef.current = null;
