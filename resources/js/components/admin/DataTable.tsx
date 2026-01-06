@@ -30,7 +30,7 @@ interface DataTableProps<T> {
     titleIcon?: React.ReactNode;
 }
 
-export default function DataTable<T extends Record<string, unknown>>({
+export default function DataTable<T extends Record<string, unknown> = Record<string, unknown>>({
     data,
     columns,
     searchable = true,
@@ -214,36 +214,38 @@ export default function DataTable<T extends Record<string, unknown>>({
                             </table>
                         </div>
 
-                        {pagination && totalPages > 1 && (
+                        {pagination && sortedData.length > 0 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
                                 <div className="text-sm text-muted-foreground">
                                     Showing {(currentPage - 1) * pageSize + 1} to{' '}
                                     {Math.min(currentPage * pageSize, sortedData.length)} of{' '}
-                                    {sortedData.length} results
+                                    {sortedData.length} result{sortedData.length !== 1 ? 's' : ''}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                        Previous
-                                    </Button>
-                                    <div className="text-sm text-muted-foreground">
-                                        Page {currentPage} of {totalPages}
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                            Previous
+                                        </Button>
+                                        <div className="text-sm text-muted-foreground">
+                                            Page {currentPage} of {totalPages}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Next
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                    >
-                                        Next
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                                )}
                             </div>
                         )}
                     </>

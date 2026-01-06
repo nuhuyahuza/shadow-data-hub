@@ -51,6 +51,7 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
     ->group(function () {
         Route::get('dashboard', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
         Route::get('users', [\App\Http\Controllers\Admin\UserController::class, 'index']);
+        Route::post('users', [\App\Http\Controllers\Admin\UserController::class, 'store']);
         Route::patch('users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'update']);
         Route::get('packages', [\App\Http\Controllers\Admin\DataPackageController::class, 'index']);
         Route::post('packages', [\App\Http\Controllers\Admin\DataPackageController::class, 'store']);

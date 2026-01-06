@@ -109,6 +109,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('transactions', function () {
             return Inertia::render('admin/transactions');
         })->name('admin.transactions');
+        Route::get('agents', function () {
+            return Inertia::render('admin/agents');
+        })->name('admin.agents');
         Route::get('vendor-logs', function () {
             return Inertia::render('admin/vendor-logs');
         })->name('admin.vendor-logs');

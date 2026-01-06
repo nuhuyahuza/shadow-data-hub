@@ -21,7 +21,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface Transaction {
+interface Transaction extends Record<string, unknown> {
     id: number;
     reference: string;
     user?: {
@@ -48,25 +48,46 @@ export default function AdminTransactions() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/admin/transactions', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Failed to load transactions');
+        const fetchAllTransactions = async () => {
+            try {
+                let page = 1;
+                let allData: Transaction[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/admin/transactions?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load transactions');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    // Check if there are more pages
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
                 }
-                const data = await res.json();
-                setTransactions(data.data || data);
+
+                setTransactions(allData);
                 setLoading(false);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('Error loading transactions:', err);
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchAllTransactions();
     }, []);
 
     const getStatusBadge = (status: string) => {

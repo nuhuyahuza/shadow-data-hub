@@ -5,7 +5,9 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Edit, UserCheck, UserX } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX } from 'lucide-react';
+import CreateUserModal from '@/components/admin/CreateUserModal';
+import { useToast } from '@/components/ui/toast';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,7 +23,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface User {
+interface User extends Record<string, unknown> {
     id: string;
     name: string;
     email: string | null;
@@ -31,29 +33,52 @@ interface User {
 }
 
 export default function AdminUsers() {
+    const { addToast } = useToast();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     useEffect(() => {
-        fetch('/api/admin/users', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Failed to load users');
+        const fetchAllUsers = async () => {
+            try {
+                let page = 1;
+                let allData: User[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/admin/users?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load users');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    // Check if there are more pages
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
                 }
-                const data = await res.json();
-                setUsers(data.data || data);
+
+                setUsers(allData);
                 setLoading(false);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('Error loading users:', err);
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchAllUsers();
     }, []);
 
     const handleRoleUpdate = async (userId: string, newRole: string) => {
@@ -73,6 +98,18 @@ export default function AdminUsers() {
                 setUsers((prev) =>
                     prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user))
                 );
+                addToast({
+                    title: 'Role Updated',
+                    description: `User role has been updated to ${newRole}`,
+                    variant: 'success',
+                });
+            } else {
+                const errorData = await response.json();
+                addToast({
+                    title: 'Update Failed',
+                    description: errorData.message || 'Failed to update user role',
+                    variant: 'destructive',
+                });
             }
         } catch (error) {
             console.error('Error updating user role:', error);
@@ -160,10 +197,60 @@ export default function AdminUsers() {
         </DropdownMenu>
     );
 
+    const handleRefresh = () => {
+        setLoading(true);
+        const fetchAllUsers = async () => {
+            try {
+                let page = 1;
+                let allData: User[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/admin/users?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load users');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                setUsers(allData);
+                setLoading(false);
+            } catch (err) {
+                console.error('Error loading users:', err);
+                setLoading(false);
+            }
+        };
+
+        fetchAllUsers();
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Users" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold">User Management</h1>
+                    <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add User
+                    </Button>
+                </div>
                 <DataTable
                     data={users}
                     columns={columns}
@@ -175,10 +262,13 @@ export default function AdminUsers() {
                     actions={actions}
                     loading={loading}
                     emptyMessage="No users found"
-                    title="User Management"
-                    titleIcon={<Users className="h-5 w-5" />}
                 />
             </div>
+            <CreateUserModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={handleRefresh}
+            />
         </AppLayout>
     );
 }

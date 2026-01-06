@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -24,12 +25,27 @@ interface DataPackage {
 export default function Packages() {
     const [packages, setPackages] = useState<DataPackage[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/packages')
-            .then((res) => res.json())
-            .then((data) => {
-                setPackages(data);
+        fetch('/api/packages', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    throw new Error('Failed to load packages');
+                }
+                const data = await res.json();
+                setPackages(Array.isArray(data) ? data : data.data || []);
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error('Error loading packages:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load packages');
                 setLoading(false);
             });
     }, []);
@@ -56,7 +72,18 @@ export default function Packages() {
                     </CardHeader>
                     <CardContent>
                         {loading ? (
-                            <p>Loading packages...</p>
+                            <div className="flex items-center justify-center py-12">
+                                <Spinner />
+                                <span className="ml-2 text-muted-foreground">Loading packages...</span>
+                            </div>
+                        ) : error ? (
+                            <div className="text-center py-12">
+                                <p className="text-destructive">{error}</p>
+                            </div>
+                        ) : packages.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground">
+                                No packages available
+                            </div>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-3">
                                 {packages.map((pkg) => (
@@ -75,7 +102,7 @@ export default function Packages() {
                                                     GHS {Number(pkg.price).toFixed(2)}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {pkg.validity}
+                                                    {pkg.data_size} • {pkg.validity}
                                                 </p>
                                             </div>
                                         </CardContent>

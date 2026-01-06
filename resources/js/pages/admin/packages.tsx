@@ -5,7 +5,9 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Package, Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Package, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import CreatePackageModal from '@/components/admin/CreatePackageModal';
+import { useToast } from '@/components/ui/toast';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,7 +23,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface DataPackage {
+interface DataPackage extends Record<string, unknown> {
     id: number;
     network: string;
     name: string;
@@ -34,29 +36,52 @@ interface DataPackage {
 }
 
 export default function AdminPackages() {
+    const { addToast } = useToast();
     const [packages, setPackages] = useState<DataPackage[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     useEffect(() => {
-        fetch('/api/admin/packages', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Failed to load packages');
+        const fetchAllPackages = async () => {
+            try {
+                let page = 1;
+                let allData: DataPackage[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/admin/packages?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load packages');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    // Check if there are more pages
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
                 }
-                const data = await res.json();
-                setPackages(data.data || data);
+
+                setPackages(allData);
                 setLoading(false);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('Error loading packages:', err);
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchAllPackages();
     }, []);
 
     const handleToggleActive = async (packageId: number, currentStatus: boolean) => {
@@ -78,6 +103,18 @@ export default function AdminPackages() {
                         pkg.id === packageId ? { ...pkg, is_active: !currentStatus } : pkg
                     )
                 );
+                addToast({
+                    title: 'Package Updated',
+                    description: `Package has been ${!currentStatus ? 'enabled' : 'disabled'}`,
+                    variant: 'success',
+                });
+            } else {
+                const errorData = await response.json();
+                addToast({
+                    title: 'Update Failed',
+                    description: errorData.message || 'Failed to update package',
+                    variant: 'destructive',
+                });
             }
         } catch (error) {
             console.error('Error updating package:', error);
@@ -182,10 +219,60 @@ export default function AdminPackages() {
         </DropdownMenu>
     );
 
+    const handleRefresh = () => {
+        setLoading(true);
+        const fetchAllPackages = async () => {
+            try {
+                let page = 1;
+                let allData: DataPackage[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/admin/packages?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load packages');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                setPackages(allData);
+                setLoading(false);
+            } catch (err) {
+                console.error('Error loading packages:', err);
+                setLoading(false);
+            }
+        };
+
+        fetchAllPackages();
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Packages" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold">Data Packages</h1>
+                    <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Package
+                    </Button>
+                </div>
                 <DataTable
                     data={packages}
                     columns={columns}
@@ -197,10 +284,13 @@ export default function AdminPackages() {
                     actions={actions}
                     loading={loading}
                     emptyMessage="No packages found"
-                    title="Data Packages"
-                    titleIcon={<Package className="h-5 w-5" />}
                 />
             </div>
+            <CreatePackageModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={handleRefresh}
+            />
         </AppLayout>
     );
 }

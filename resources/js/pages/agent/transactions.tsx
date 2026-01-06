@@ -6,6 +6,7 @@ import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { History, CheckCircle2, XCircle, Clock, Check } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,7 +22,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface Transaction {
+interface Transaction extends Record<string, unknown> {
     id: number;
     reference: string;
     user?: {
@@ -44,29 +45,51 @@ interface Transaction {
 }
 
 export default function AgentTransactions() {
+    const { addToast } = useToast();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/agent/transactions', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Failed to load transactions');
+        const fetchAllTransactions = async () => {
+            try {
+                let page = 1;
+                let allData: Transaction[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/agent/transactions?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load transactions');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    // Check if there are more pages
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
                 }
-                const data = await res.json();
-                setTransactions(data.data || data);
+
+                setTransactions(allData);
                 setLoading(false);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('Error loading transactions:', err);
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchAllTransactions();
     }, []);
 
     const handleFulfill = async (transactionId: number) => {
@@ -91,9 +114,18 @@ export default function AgentTransactions() {
                         t.id === transactionId ? { ...t, status: 'success' } : t
                     )
                 );
+                addToast({
+                    title: 'Transaction Fulfilled',
+                    description: 'The transaction has been successfully fulfilled',
+                    variant: 'success',
+                });
             } else {
                 const error = await response.json();
-                alert(error.message || 'Failed to fulfill transaction');
+                addToast({
+                    title: 'Fulfillment Failed',
+                    description: error.message || 'Failed to fulfill transaction',
+                    variant: 'destructive',
+                });
             }
         } catch (error) {
             console.error('Error fulfilling transaction:', error);

@@ -372,6 +372,160 @@ class DirectPaymentService
     }
 
     /**
+     * Verify Paystack transaction by reference (for card payments).
+     */
+    public function verifyTransaction(string $reference): array
+    {
+        $gateway = config('services.payment.gateway', 'paystack');
+        $secretKey = config("services.payment.{$gateway}.secret_key", '');
+
+        if (! $secretKey) {
+            Log::error('Paystack credentials not configured');
+
+            return [
+                'success' => false,
+                'message' => 'Payment gateway not configured',
+            ];
+        }
+
+        $paystackUrl = "https://api.paystack.co/transaction/verify/{$reference}";
+
+        try {
+            $ch = curl_init($paystackUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer '.$secretKey,
+                'Content-Type: application/json',
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $responseData = json_decode($response, true);
+
+                if ($responseData['status'] && isset($responseData['data'])) {
+                    $transactionData = $responseData['data'];
+                    $status = $transactionData['status'] ?? 'pending';
+                    $amount = ($transactionData['amount'] ?? 0) / 100; // Convert from pesewas
+
+                    Log::info('Paystack transaction verified', [
+                        'reference' => $reference,
+                        'status' => $status,
+                        'amount' => $amount,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'status' => $this->mapPaymentStatus($status),
+                        'amount' => $amount,
+                        'data' => $transactionData,
+                    ];
+                }
+            }
+
+            Log::error('Paystack verification error', [
+                'http_code' => $httpCode,
+                'response' => $response,
+                'reference' => $reference,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to verify transaction',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Paystack verification exception', [
+                'error' => $e->getMessage(),
+                'reference' => $reference,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Transaction verification failed',
+            ];
+        }
+    }
+
+    /**
+     * Requery Paystack transaction by transaction ID (for mobile money payments).
+     */
+    public function requeryTransaction(string $transactionId): array
+    {
+        $gateway = config('services.payment.gateway', 'paystack');
+        $secretKey = config("services.payment.{$gateway}.secret_key", '');
+
+        if (! $secretKey) {
+            Log::error('Paystack credentials not configured');
+
+            return [
+                'success' => false,
+                'message' => 'Payment gateway not configured',
+            ];
+        }
+
+        $paystackUrl = "https://api.paystack.co/transaction/requery/{$transactionId}";
+
+        try {
+            $ch = curl_init($paystackUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer '.$secretKey,
+                'Content-Type: application/json',
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $responseData = json_decode($response, true);
+
+                if ($responseData['status'] && isset($responseData['data'])) {
+                    $transactionData = $responseData['data'];
+                    $status = $transactionData['status'] ?? 'pending';
+                    $amount = ($transactionData['amount'] ?? 0) / 100; // Convert from pesewas
+
+                    Log::info('Paystack transaction requeried', [
+                        'transaction_id' => $transactionId,
+                        'status' => $status,
+                        'amount' => $amount,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'status' => $this->mapPaymentStatus($status),
+                        'amount' => $amount,
+                        'data' => $transactionData,
+                    ];
+                }
+            }
+
+            Log::error('Paystack requery error', [
+                'http_code' => $httpCode,
+                'response' => $response,
+                'transaction_id' => $transactionId,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to requery transaction',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Paystack requery exception', [
+                'error' => $e->getMessage(),
+                'transaction_id' => $transactionId,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Transaction requery failed',
+            ];
+        }
+    }
+
+    /**
      * Map payment gateway status to our transaction status.
      */
     private function mapPaymentStatus(?string $gatewayStatus): string

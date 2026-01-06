@@ -72,6 +72,11 @@ export function AppSidebar() {
             icon: Users,
         },
         {
+            title: 'Agents',
+            href: '/admin/agents',
+            icon: Users,
+        },
+        {
             title: 'Packages',
             href: '/admin/packages',
             icon: Package,

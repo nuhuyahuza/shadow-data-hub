@@ -13,7 +13,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface DataPackage {
+interface DataPackage extends Record<string, unknown> {
     id: number;
     network: string;
     name: string;
@@ -30,25 +30,46 @@ export default function AgentPackages() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/agent/packages', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Failed to load packages');
+        const fetchAllPackages = async () => {
+            try {
+                let page = 1;
+                let allData: DataPackage[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/agent/packages?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load packages');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    // Check if there are more pages
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
                 }
-                const data = await res.json();
-                setPackages(data.data || data);
+
+                setPackages(allData);
                 setLoading(false);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('Error loading packages:', err);
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchAllPackages();
     }, []);
 
     const getNetworkBadge = (network: string) => {

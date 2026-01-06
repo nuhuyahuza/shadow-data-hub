@@ -13,7 +13,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface User {
+interface User extends Record<string, unknown> {
     id: string;
     name: string;
     email: string | null;
@@ -27,25 +27,46 @@ export default function AgentUsers() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/agent/users', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Failed to load users');
+        const fetchAllUsers = async () => {
+            try {
+                let page = 1;
+                let allData: User[] = [];
+                let hasMore = true;
+
+                while (hasMore) {
+                    const response = await fetch(`/api/agent/users?per_page=100&page=${page}`, {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load users');
+                    }
+
+                    const data = await response.json();
+                    const pageData = data.data || data;
+                    allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
+
+                    // Check if there are more pages
+                    if (data.last_page && page < data.last_page) {
+                        page++;
+                    } else {
+                        hasMore = false;
+                    }
                 }
-                const data = await res.json();
-                setUsers(data.data || data);
+
+                setUsers(allData);
                 setLoading(false);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('Error loading users:', err);
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchAllUsers();
     }, []);
 
     const getRoleBadge = (role: string) => {
