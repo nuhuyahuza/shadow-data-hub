@@ -82,6 +82,11 @@ export function AppSidebar() {
             icon: History,
         },
         {
+            title: 'Purchases',
+            href: '/admin/purchases',
+            icon: ShoppingCart,
+        },
+        {
             title: 'Vendor Logs',
             href: '/admin/vendor-logs',
             icon: FileText,
@@ -93,6 +98,11 @@ export function AppSidebar() {
             title: 'Transactions',
             href: '/agent/transactions',
             icon: History,
+        },
+        {
+            title: 'Purchases',
+            href: '/agent/purchases',
+            icon: ShoppingCart,
         },
         {
             title: 'Users',

@@ -34,6 +34,45 @@ class TransactionController extends Controller
     }
 
     /**
+     * Get transaction details.
+     */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+
+        return response()->json($transaction);
+    }
+
+    /**
+     * Update transaction status.
+     */
+    public function updateStatus(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,success,failed,cancelled'],
+        ]);
+
+        $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+
+        $transaction->update([
+            'status' => $validated['status'],
+            'vendor_response' => array_merge(
+                $transaction->vendor_response ?? [],
+                [
+                    'status_updated_manually' => true,
+                    'updated_by' => $request->user()->id,
+                    'updated_at' => now()->toIso8601String(),
+                ]
+            ),
+        ]);
+
+        return response()->json([
+            'message' => 'Transaction status updated successfully',
+            'transaction' => $transaction->fresh(['user', 'package']),
+        ]);
+    }
+
+    /**
      * Fulfill a pending transaction (mark as completed).
      */
     public function fulfill(Request $request, string $id): JsonResponse

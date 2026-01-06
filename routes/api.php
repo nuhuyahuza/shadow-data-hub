@@ -30,6 +30,7 @@ Route::middleware(['web', 'auth', 'throttle:60,1'])->group(function () {
     Route::prefix('transactions')->group(function () {
         Route::get('/', [\App\Http\Controllers\TransactionController::class, 'index']);
         Route::get('{id}', [\App\Http\Controllers\TransactionController::class, 'show']);
+        Route::post('{reference}/complete', [\App\Http\Controllers\TransactionController::class, 'markComplete']);
     });
 });
 
@@ -41,7 +42,9 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
     ->prefix('agent')
     ->group(function () {
         Route::get('transactions', [\App\Http\Controllers\Agent\TransactionController::class, 'index']);
+        Route::get('transactions/{id}', [\App\Http\Controllers\Agent\TransactionController::class, 'show']);
         Route::post('transactions/{id}/fulfill', [\App\Http\Controllers\Agent\TransactionController::class, 'fulfill']);
+        Route::patch('transactions/{id}/status', [\App\Http\Controllers\Agent\TransactionController::class, 'updateStatus']);
         Route::get('users', [\App\Http\Controllers\Agent\UserController::class, 'index']);
         Route::get('packages', [\App\Http\Controllers\Agent\DataPackageController::class, 'index']);
     });
@@ -58,6 +61,8 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
         Route::post('packages', [\App\Http\Controllers\Admin\DataPackageController::class, 'store']);
         Route::patch('packages/{id}', [\App\Http\Controllers\Admin\DataPackageController::class, 'update']);
         Route::get('transactions', [\App\Http\Controllers\Admin\TransactionController::class, 'index']);
+        Route::get('transactions/{id}', [\App\Http\Controllers\Admin\TransactionController::class, 'show']);
+        Route::patch('transactions/{id}/status', [\App\Http\Controllers\Admin\TransactionController::class, 'updateStatus']);
         Route::post('transactions/{id}/fulfill', [\App\Http\Controllers\Admin\TransactionController::class, 'fulfill']);
         Route::post('transactions/{id}/refund', [\App\Http\Controllers\Admin\TransactionController::class, 'refund']);
         Route::get('vendor-logs', [\App\Http\Controllers\Admin\VendorLogController::class, 'index']);

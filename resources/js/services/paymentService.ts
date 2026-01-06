@@ -158,7 +158,8 @@ export async function purchaseWithWallet(
         body: JSON.stringify(data),
     });
 
-    if (!response.ok) {
+    // 202 Accepted is a valid response for pending/idempotent transactions
+    if (!response.ok && response.status !== 202) {
         const error = await response.json();
         throw error;
     }

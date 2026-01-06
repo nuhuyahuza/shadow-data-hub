@@ -37,6 +37,15 @@ Route::get('auth/admin/two-factor-challenge', function () {
     return Inertia::render('auth/admin-two-factor-challenge');
 })->name('admin.two-factor.challenge')->middleware('guest');
 
+// Agent login routes (password-based with 2FA)
+Route::get('auth/agent-login', function () {
+    return Inertia::render('auth/agent-login');
+})->name('agent-login')->middleware('guest');
+
+Route::get('auth/agent/two-factor-challenge', function () {
+    return Inertia::render('auth/agent-two-factor-challenge');
+})->name('agent.two-factor.challenge')->middleware('guest');
+
 // Guest checkout route
 Route::get('checkout/{packageId}', function ($packageId) {
     $package = \App\Models\DataPackage::findOrFail($packageId);
@@ -58,6 +67,9 @@ Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
     // Admin login (password-based, requires web middleware for session)
     Route::post('admin/login', [\App\Http\Controllers\Auth\AdminLoginController::class, 'login'])->middleware('throttle:5,1');
     Route::post('admin/two-factor-challenge', [\App\Http\Controllers\Auth\AdminLoginController::class, 'twoFactorChallenge'])->middleware('throttle:5,1');
+    // Agent login (password-based, requires web middleware for session)
+    Route::post('agent/login', [\App\Http\Controllers\Auth\AgentLoginController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('agent/two-factor-challenge', [\App\Http\Controllers\Auth\AgentLoginController::class, 'twoFactorChallenge'])->middleware('throttle:5,1');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -84,6 +96,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('transactions', function () {
             return Inertia::render('agent/transactions');
         })->name('agent.transactions');
+        Route::get('purchases', function () {
+            return Inertia::render('agent/purchases');
+        })->name('agent.purchases');
         Route::get('users', function () {
             return Inertia::render('agent/users');
         })->name('agent.users');
@@ -109,6 +124,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('transactions', function () {
             return Inertia::render('admin/transactions');
         })->name('admin.transactions');
+        Route::get('purchases', function () {
+            return Inertia::render('admin/purchases');
+        })->name('admin.purchases');
         Route::get('agents', function () {
             return Inertia::render('admin/agents');
         })->name('admin.agents');

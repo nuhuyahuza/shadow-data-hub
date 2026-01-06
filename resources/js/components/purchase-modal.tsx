@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { usePage } from '@inertiajs/react';
 import {
     Dialog,
     DialogContent,
@@ -26,6 +27,8 @@ import {
     type GuestPurchaseRequest,
     type WalletPurchaseRequest,
 } from '@/services/paymentService';
+import { useToast } from '@/components/ui/toast';
+import { type SharedData } from '@/types';
 
 interface DataPackage {
     id: number;
@@ -80,6 +83,14 @@ export default function PurchaseModal({
     onSuccess,
     useWallet = true,
 }: PurchaseModalProps) {
+    const { addToast } = useToast();
+    const page = usePage<SharedData>();
+    const user = page.props.auth?.user;
+    const isAdminOrAgent = user?.role === 'admin' || user?.role === 'agent';
+    const isLocalEnv = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      window.location.hostname.includes('localhost');
+
     const [step, setStep] = useState<Step>('phone');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [detectedNetwork, setDetectedNetwork] = useState<string | null>(null);
@@ -95,6 +106,7 @@ export default function PurchaseModal({
         message_prompt?: string;
         timer?: number;
     } | null>(null);
+    const [markingComplete, setMarkingComplete] = useState(false);
     const iframeContainerRef = useRef<HTMLDivElement>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isPollingRef = useRef<boolean>(false);
@@ -270,10 +282,13 @@ export default function PurchaseModal({
                     return;
                 }
 
-                // If pending, show pending message
+                // If pending (idempotent or manual processing), set reference and poll for status
                 if (result.status === 'pending') {
-                    setError('Transaction is already being processed. Please wait.');
+                    setTransactionReference(result.transaction_reference);
+                    // Move to payment step to show waiting state and start polling
+                    setStep('payment');
                     setLoading(false);
+                    // Polling will be handled by useEffect
                     return;
                 }
 
@@ -348,14 +363,15 @@ export default function PurchaseModal({
                     throw new Error('Payment initialization failed. No transaction reference received.');
                 }
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             // Handle error response with requires_funding
-            if (err.requires_funding) {
+            const error = err as { requires_funding?: boolean; required_amount?: number; current_balance?: number; message?: string };
+            if (error.requires_funding) {
                 setError(
-                    `Insufficient wallet balance. You need GHS ${err.required_amount?.toFixed(2)} but have GHS ${err.current_balance?.toFixed(2)}.`
+                    `Insufficient wallet balance. You need GHS ${error.required_amount?.toFixed(2)} but have GHS ${error.current_balance?.toFixed(2)}.`
                 );
             } else {
-                setError(err.message || err instanceof Error ? err.message : 'Failed to initialize payment');
+                setError(error.message || (err instanceof Error ? err.message : 'Failed to initialize payment'));
             }
             setStep('phone');
             setLoading(false);
@@ -477,8 +493,93 @@ export default function PurchaseModal({
                             </div>
                         </div>
 
-                        {/* Mobile Money Payment Instructions */}
-                        {paymentDisplay ? (
+                        {/* Show waiting state if transaction is pending (wallet purchase) */}
+                        {!paymentDisplay && !paymentUrl && transactionReference ? (
+                            <div className="space-y-4">
+                                <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+                                    <AlertTitle className="text-yellow-800 dark:text-yellow-200">
+                                        Processing Transaction
+                                    </AlertTitle>
+                                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                                        <div className="space-y-3 mt-2">
+                                            <p>
+                                                Your transaction is being processed. Please wait while we confirm your payment.
+                                            </p>
+                                            {transactionReference && (
+                                                <p className="text-xs font-mono">
+                                                    Reference: {transactionReference}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+
+                                <div className="flex items-center justify-center py-4">
+                                    <Spinner />
+                                </div>
+
+                                <p className="text-sm text-center text-muted-foreground">
+                                    Waiting for transaction confirmation...
+                                </p>
+
+                                {/* Payment Completed Button (for agents/admins in local env) */}
+                                {isAdminOrAgent && isLocalEnv && transactionReference && (
+                                    <Button
+                                        onClick={async () => {
+                                            if (!transactionReference) return;
+                                            
+                                            setMarkingComplete(true);
+                                            setError(null);
+                                            
+                                            try {
+                                                const response = await fetch(
+                                                    `/api/transactions/${transactionReference}/complete`,
+                                                    {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                                        },
+                                                        credentials: 'include',
+                                                    }
+                                                );
+
+                                                if (response.ok) {
+                                                    addToast({
+                                                        title: 'Payment Completed',
+                                                        description: 'Transaction has been marked as complete',
+                                                        variant: 'success',
+                                                    });
+                                                    // Move to success step
+                                                    setStep('success');
+                                                    if (onSuccess) {
+                                                        onSuccess();
+                                                    }
+                                                    // Close modal after a brief delay
+                                                    setTimeout(() => {
+                                                        handleClose();
+                                                    }, 1500);
+                                                } else {
+                                                    const errorData = await response.json();
+                                                    setError(errorData.message || 'Failed to mark transaction as complete');
+                                                }
+                                            } catch (err: unknown) {
+                                                const error = err as { message?: string };
+                                                setError(error.message || (err instanceof Error ? err.message : 'Failed to mark transaction as complete'));
+                                            } finally {
+                                                setMarkingComplete(false);
+                                            }
+                                        }}
+                                        className="w-full"
+                                        disabled={markingComplete}
+                                    >
+                                        {markingComplete && <Spinner />}
+                                        {markingComplete ? 'Completing...' : 'Payment Completed (Test)'}
+                                    </Button>
+                                )}
+                            </div>
+                        ) : paymentDisplay ? (
+                            /* Mobile Money Payment Instructions */
                             <div className="space-y-4">
                                 <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
                                     <AlertTitle className="text-blue-800 dark:text-blue-200">
@@ -510,47 +611,103 @@ export default function PurchaseModal({
                                     <Spinner />
                                 </div>
 
-                                <p className="text-sm text-center text-muted-foreground">
-                                    Waiting for payment confirmation... Please complete the payment on your mobile device.
-                                </p>
-                            </div>
-                        ) : paymentUrl ? (
-                            /* Card Payment iframe */
-                            <div
-                                ref={iframeContainerRef}
-                                className="w-full min-h-[500px] border rounded-lg overflow-hidden bg-white"
-                                id="paystack-iframe-container"
-                            >
-                                <iframe
-                                    src={paymentUrl}
-                                    className="w-full h-[500px] border-0"
-                                    title="Paystack Payment"
-                                    allow="payment *"
-                                    id="paystack-iframe"
-                                    style={{ minHeight: '500px' }}
-                                />
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center h-[500px]">
-                                <div className="text-center space-y-2">
-                                    <Spinner />
-                                    <p className="text-sm text-muted-foreground">
-                                        Loading payment form...
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+                        <p className="text-sm text-center text-muted-foreground">
+                            Waiting for payment confirmation... Please complete the payment on your mobile device.
+                        </p>
+                    </div>
+                ) : paymentUrl ? (
+                    /* Card Payment iframe */
+                    <div
+                        ref={iframeContainerRef}
+                        className="w-full min-h-[500px] border rounded-lg overflow-hidden bg-white"
+                        id="paystack-iframe-container"
+                    >
+                        <iframe
+                            src={paymentUrl}
+                            className="w-full h-[500px] border-0"
+                            title="Paystack Payment"
+                            allow="payment *"
+                            id="paystack-iframe"
+                            style={{ minHeight: '500px' }}
+                        />
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center h-[500px]">
+                        <div className="text-center space-y-2">
+                            <Spinner />
+                            <p className="text-sm text-muted-foreground">
+                                Loading payment form...
+                            </p>
+                        </div>
+                    </div>
+                )}
 
+                <div className="flex gap-2">
+                    {isAdminOrAgent && isLocalEnv && transactionReference && (
                         <Button
-                            variant="outline"
-                            onClick={() => {
-                                setStep('phone');
-                                setLoading(false);
+                            onClick={async () => {
+                                if (!transactionReference) return;
+                                
+                                setMarkingComplete(true);
+                                setError(null);
+                                
+                                try {
+                                    const response = await fetch(
+                                        `/api/transactions/${transactionReference}/complete`,
+                                        {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                            },
+                                            credentials: 'include',
+                                        }
+                                    );
+
+                                    if (response.ok) {
+                                        addToast({
+                                            title: 'Payment Completed',
+                                            description: 'Transaction has been marked as complete',
+                                            variant: 'success',
+                                        });
+                                        // Move to success step
+                                        setStep('success');
+                                        if (onSuccess) {
+                                            onSuccess();
+                                        }
+                                        // Close modal after a brief delay
+                                        setTimeout(() => {
+                                            handleClose();
+                                        }, 1500);
+                                    } else {
+                                        const errorData = await response.json();
+                                        setError(errorData.message || 'Failed to mark transaction as complete');
+                                    }
+                                } catch (err: unknown) {
+                                    const error = err as { message?: string };
+                                    setError(error.message || (err instanceof Error ? err.message : 'Failed to mark transaction as complete'));
+                                } finally {
+                                    setMarkingComplete(false);
+                                }
                             }}
-                            className="w-full"
+                            disabled={markingComplete}
+                            className="flex-1"
                         >
-                            Cancel Payment
+                            {markingComplete && <Spinner />}
+                            {markingComplete ? 'Completing...' : 'Payment Completed (Test)'}
                         </Button>
+                    )}
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setStep('phone');
+                            setLoading(false);
+                        }}
+                        className={isAdminOrAgent && isLocalEnv && transactionReference ? 'flex-1' : 'w-full'}
+                    >
+                        Cancel Payment
+                    </Button>
+                </div>
                     </div>
                 ) : (
                     <div className="space-y-6">

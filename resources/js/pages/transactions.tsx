@@ -18,11 +18,16 @@ interface Transaction {
     reference: string;
     type: string;
     network: string | null;
-    package_name: string | null;
     phone_number: string | null;
     amount: number | string;
     status: string;
     created_at: string;
+    package?: {
+        id: number;
+        name: string;
+        network: string;
+        data_size: string;
+    } | null;
 }
 
 export default function Transactions() {
@@ -69,6 +74,8 @@ export default function Transactions() {
                 return 'bg-red-500';
             case 'pending':
                 return 'bg-yellow-500';
+            case 'cancelled':
+                return 'bg-gray-500';
             default:
                 return 'bg-gray-500';
         }
@@ -87,17 +94,17 @@ export default function Transactions() {
                     </CardHeader>
                     <CardContent>
                         <div className="mb-4 flex gap-2">
-                            {['all', 'success', 'failed', 'pending'].map((f) => (
+                            {['all', 'success', 'failed', 'pending', 'cancelled'].map((f) => (
                                 <button
                                     key={f}
                                     onClick={() => {
                                         setFilter(f);
                                         setLoading(true);
                                     }}
-                                    className={`px-3 py-1 rounded text-sm ${
+                                    className={`px-3 py-1 rounded text-sm transition-colors ${
                                         filter === f
                                             ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted'
+                                            : 'bg-muted hover:bg-muted/80'
                                     }`}
                                 >
                                     {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -106,7 +113,7 @@ export default function Transactions() {
                         </div>
                         {loading ? (
                             <div className="text-center py-8">
-                                <p>Loading transactions...</p>
+                                <p className="text-muted-foreground">Loading transactions...</p>
                             </div>
                         ) : transactions.length === 0 ? (
                             <div className="text-center py-8">
@@ -122,8 +129,9 @@ export default function Transactions() {
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium">
-                                                    {transaction.package_name ||
-                                                        transaction.type}
+                                                    {transaction.package?.name ||
+                                                        transaction.type.charAt(0).toUpperCase() +
+                                                            transaction.type.slice(1)}
                                                 </span>
                                                 <Badge
                                                     className={`${getStatusColor(
@@ -139,6 +147,12 @@ export default function Transactions() {
                                                     transaction.created_at
                                                 ).toLocaleString()}
                                             </p>
+                                            {transaction.package && (
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {transaction.package.data_size}
+                                                    {transaction.network && ` • ${transaction.network.toUpperCase()}`}
+                                                </p>
+                                            )}
                                         </div>
                                         <span className="font-semibold">
                                             GHS {Number(transaction.amount).toFixed(2)}

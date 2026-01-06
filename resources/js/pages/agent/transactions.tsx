@@ -48,6 +48,8 @@ export default function AgentTransactions() {
     const { addToast } = useToast();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchAllTransactions = async () => {
@@ -248,6 +250,58 @@ export default function AgentTransactions() {
         },
     ];
 
+    const handleViewDetails = async (transaction: Transaction) => {
+        try {
+            const response = await fetch(`/api/agent/transactions/${transaction.id}`, {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setSelectedTransaction(data);
+                setIsDetailsModalOpen(true);
+            }
+        } catch (error) {
+            console.error('Error fetching transaction details:', error);
+        }
+    };
+
+    const handleStatusUpdateInModal = async (transactionId: number, newStatus: string) => {
+        try {
+            const response = await fetch(`/api/agent/transactions/${transactionId}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            if (response.ok) {
+                setTransactions((prev) =>
+                    prev.map((t) =>
+                        t.id === transactionId ? { ...t, status: newStatus } : t
+                    )
+                );
+                // Update the selected transaction
+                if (selectedTransaction && selectedTransaction.id === transactionId) {
+                    setSelectedTransaction({ ...selectedTransaction, status: newStatus });
+                }
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to update status');
+            }
+        } catch (error) {
+            throw error;
+        }
+    };
+
     const actions = (row: Transaction) => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -256,6 +310,10 @@ export default function AgentTransactions() {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleViewDetails(row)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                </DropdownMenuItem>
                 {row.status === 'pending' && (
                     <DropdownMenuItem onClick={() => handleFulfill(row.id)}>
                         <Check className="h-4 w-4 mr-2" />
@@ -285,6 +343,16 @@ export default function AgentTransactions() {
                     titleIcon={<History className="h-5 w-5" />}
                 />
             </div>
+            <TransactionDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => {
+                    setIsDetailsModalOpen(false);
+                    setSelectedTransaction(null);
+                }}
+                transaction={selectedTransaction}
+                onStatusUpdate={handleStatusUpdateInModal}
+                apiPrefix="agent"
+            />
         </AppLayout>
     );
 }

@@ -77,11 +77,18 @@ class OtpController extends Controller
             $user->load('wallet');
         }
 
-        // Block admin login via OTP - admins must use password login
+        // Block admin and agent login via OTP - they must use password login
         if ($user->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Admin accounts require password authentication. Please use the admin login page.',
+            ], 403);
+        }
+
+        if ($user->isAgent()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Agent accounts require password authentication. Please use the agent login page.',
             ], 403);
         }
 

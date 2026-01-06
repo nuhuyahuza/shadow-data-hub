@@ -5,20 +5,28 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { History, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
-import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
+import { ShoppingCart, CheckCircle2, XCircle, Clock, Eye, Ban } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { MoreHorizontal } from 'lucide-react';
+import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
+import { useToast } from '@/components/ui/toast';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Transactions',
-        href: '/admin/transactions',
+        title: 'Purchases',
+        href: '/admin/purchases',
     },
 ];
 
@@ -35,35 +43,36 @@ interface Transaction extends Record<string, unknown> {
         id: number;
         name: string;
         network: string;
-        data_size: string;
-        price: number | string;
     };
     type: string;
     amount: number | string;
     status: string;
     network?: string;
     phone_number?: string;
-    vendor_reference?: string;
-    vendor_response?: Record<string, unknown>;
     created_at: string;
-    updated_at: string;
 }
 
-export default function AdminTransactions() {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+export default function AdminPurchases() {
+    const { addToast } = useToast();
+    const [purchases, setPurchases] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     useEffect(() => {
-        const fetchAllTransactions = async () => {
+        const fetchAllPurchases = async () => {
             try {
                 let page = 1;
                 let allData: Transaction[] = [];
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/admin/transactions?per_page=100&page=${page}`, {
+                    const url = statusFilter === 'all'
+                        ? `/api/admin/transactions?type=purchase&per_page=100&page=${page}`
+                        : `/api/admin/transactions?type=purchase&status=${statusFilter}&per_page=100&page=${page}`;
+
+                    const response = await fetch(url, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
@@ -72,14 +81,13 @@ export default function AdminTransactions() {
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to load transactions');
+                        throw new Error('Failed to load purchases');
                     }
 
                     const data = await response.json();
                     const pageData = data.data || data;
                     allData = [...allData, ...(Array.isArray(pageData) ? pageData : [])];
 
-                    // Check if there are more pages
                     if (data.last_page && page < data.last_page) {
                         page++;
                     } else {
@@ -87,16 +95,87 @@ export default function AdminTransactions() {
                     }
                 }
 
-                setTransactions(allData);
+                setPurchases(allData);
                 setLoading(false);
             } catch (err) {
-                console.error('Error loading transactions:', err);
+                console.error('Error loading purchases:', err);
                 setLoading(false);
             }
         };
 
-        fetchAllTransactions();
-    }, []);
+        fetchAllPurchases();
+    }, [statusFilter]);
+
+    const handleStatusUpdate = async (transactionId: number, newStatus: string) => {
+        try {
+            const response = await fetch(`/api/admin/transactions/${transactionId}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            if (response.ok) {
+                setPurchases((prev) =>
+                    prev.map((t) =>
+                        t.id === transactionId ? { ...t, status: newStatus } : t
+                    )
+                );
+                addToast({
+                    title: 'Status Updated',
+                    description: `Purchase status has been updated to ${newStatus}`,
+                    variant: 'success',
+                });
+            } else {
+                const errorData = await response.json();
+                addToast({
+                    title: 'Update Failed',
+                    description: errorData.message || 'Failed to update purchase status',
+                    variant: 'destructive',
+                });
+            }
+        } catch (error) {
+            console.error('Error updating purchase status:', error);
+            addToast({
+                title: 'Update Failed',
+                description: 'An unexpected error occurred',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const handleViewDetails = async (transaction: Transaction) => {
+        try {
+            const response = await fetch(`/api/admin/transactions/${transaction.id}`, {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setSelectedTransaction(data);
+                setIsDetailsModalOpen(true);
+            }
+        } catch (error) {
+            console.error('Error fetching transaction details:', error);
+        }
+    };
+
+    const handleStatusUpdateInModal = async (transactionId: number, newStatus: string) => {
+        await handleStatusUpdate(transactionId, newStatus);
+        // Refresh the transaction details after update
+        const updatedTransaction = purchases.find((t) => t.id === transactionId);
+        if (updatedTransaction) {
+            setSelectedTransaction({ ...updatedTransaction, status: newStatus });
+        }
+    };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -119,6 +198,13 @@ export default function AdminTransactions() {
                     <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
                         <Clock className="h-3 w-3 mr-1" />
                         Pending
+                    </Badge>
+                );
+            case 'cancelled':
+                return (
+                    <Badge variant="outline" className="bg-gray-500/10 text-gray-600 dark:text-gray-400">
+                        <Ban className="h-3 w-3 mr-1" />
+                        Cancelled
                     </Badge>
                 );
             default:
@@ -213,54 +299,6 @@ export default function AdminTransactions() {
         },
     ];
 
-    const handleViewDetails = async (transaction: Transaction) => {
-        try {
-            const response = await fetch(`/api/admin/transactions/${transaction.id}`, {
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setSelectedTransaction(data);
-                setIsDetailsModalOpen(true);
-            }
-        } catch (error) {
-            console.error('Error fetching transaction details:', error);
-        }
-    };
-
-    const handleStatusUpdateInModal = async (transactionId: number, newStatus: string) => {
-        const response = await fetch(`/api/admin/transactions/${transactionId}/status`, {
-            method: 'PATCH',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-            credentials: 'include',
-            body: JSON.stringify({ status: newStatus }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to update status');
-        }
-
-        setTransactions((prev) =>
-            prev.map((t) =>
-                t.id === transactionId ? { ...t, status: newStatus } : t
-            )
-        );
-        // Update the selected transaction
-        if (selectedTransaction && selectedTransaction.id === transactionId) {
-            setSelectedTransaction({ ...selectedTransaction, status: newStatus });
-        }
-    };
-
     const actions = (row: Transaction) => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -273,22 +311,59 @@ export default function AdminTransactions() {
                     <Eye className="h-4 w-4 mr-2" />
                     View Details
                 </DropdownMenuItem>
-                {row.status === 'failed' && (
-                    <DropdownMenuItem>
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Refund
-                    </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                    onClick={() => handleStatusUpdate(row.id, 'success')}
+                    disabled={row.status === 'success'}
+                >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Mark as Complete
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => handleStatusUpdate(row.id, 'failed')}
+                    disabled={row.status === 'failed'}
+                >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Mark as Failed
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => handleStatusUpdate(row.id, 'cancelled')}
+                    disabled={row.status === 'cancelled'}
+                >
+                    <Ban className="h-4 w-4 mr-2" />
+                    Mark as Cancelled
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => handleStatusUpdate(row.id, 'pending')}
+                    disabled={row.status === 'pending'}
+                >
+                    <Clock className="h-4 w-4 mr-2" />
+                    Mark as Pending
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Transactions" />
+            <Head title="Purchases" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold">Purchase Management</h1>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="success">Success</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
                 <DataTable
-                    data={transactions}
+                    data={purchases}
                     columns={columns}
                     searchable
                     searchPlaceholder="Search by reference, user, or phone..."
@@ -297,9 +372,7 @@ export default function AdminTransactions() {
                     pageSize={15}
                     actions={actions}
                     loading={loading}
-                    emptyMessage="No transactions found"
-                    title="Transactions"
-                    titleIcon={<History className="h-5 w-5" />}
+                    emptyMessage="No purchases found"
                 />
             </div>
             <TransactionDetailsModal
