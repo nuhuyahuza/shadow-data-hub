@@ -1,0 +1,259 @@
+import { useEffect, useState } from 'react';
+import { Head } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { History, CheckCircle2, XCircle, Clock, Check } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Transactions',
+        href: '/agent/transactions',
+    },
+];
+
+interface Transaction {
+    id: number;
+    reference: string;
+    user?: {
+        id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+    };
+    package?: {
+        id: number;
+        name: string;
+        network: string;
+    };
+    type: string;
+    amount: number | string;
+    status: string;
+    network?: string;
+    phone_number?: string;
+    created_at: string;
+}
+
+export default function AgentTransactions() {
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/agent/transactions', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    throw new Error('Failed to load transactions');
+                }
+                const data = await res.json();
+                setTransactions(data.data || data);
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error('Error loading transactions:', err);
+                setLoading(false);
+            });
+    }, []);
+
+    const handleFulfill = async (transactionId: number) => {
+        if (!confirm('Are you sure you want to fulfill this transaction?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/agent/transactions/${transactionId}/fulfill`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'include',
+            });
+
+            if (response.ok) {
+                setTransactions((prev) =>
+                    prev.map((t) =>
+                        t.id === transactionId ? { ...t, status: 'success' } : t
+                    )
+                );
+            } else {
+                const error = await response.json();
+                alert(error.message || 'Failed to fulfill transaction');
+            }
+        } catch (error) {
+            console.error('Error fulfilling transaction:', error);
+            alert('An error occurred while fulfilling the transaction');
+        }
+    };
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'success':
+                return (
+                    <Badge variant="default" className="bg-green-500">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Success
+                    </Badge>
+                );
+            case 'failed':
+                return (
+                    <Badge variant="destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Failed
+                    </Badge>
+                );
+            case 'pending':
+                return (
+                    <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Pending
+                    </Badge>
+                );
+            default:
+                return <Badge variant="outline">{status}</Badge>;
+        }
+    };
+
+    const getNetworkBadge = (network?: string) => {
+        if (!network) return <span className="text-muted-foreground">N/A</span>;
+        const colors: Record<string, string> = {
+            mtn: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+            telecel: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+            airteltigo: 'bg-red-500/10 text-red-600 dark:text-red-400',
+        };
+        return (
+            <Badge className={colors[network] || ''}>
+                {network.charAt(0).toUpperCase() + network.slice(1)}
+            </Badge>
+        );
+    };
+
+    const columns: ColumnDef<Transaction>[] = [
+        {
+            key: 'reference',
+            header: 'Reference',
+            accessor: (row) => (
+                <span className="font-mono text-sm">{row.reference}</span>
+            ),
+            sortable: true,
+        },
+        {
+            key: 'user',
+            header: 'User',
+            accessor: (row) => (
+                <div>
+                    <div className="font-medium">{row.user?.name || 'Guest'}</div>
+                    {row.user?.email && (
+                        <div className="text-xs text-muted-foreground">{row.user.email}</div>
+                    )}
+                </div>
+            ),
+            sortable: true,
+        },
+        {
+            key: 'package',
+            header: 'Package',
+            accessor: (row) => (
+                <div>
+                    {row.package ? (
+                        <>
+                            <div className="font-medium">{row.package.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                                {getNetworkBadge(row.package.network)}
+                            </div>
+                        </>
+                    ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: 'phone_number',
+            header: 'Phone',
+            accessor: (row) => (
+                <span className="text-sm">{row.phone_number || 'N/A'}</span>
+            ),
+        },
+        {
+            key: 'amount',
+            header: 'Amount',
+            accessor: (row) => (
+                <span className="font-medium">GHS {Number(row.amount).toFixed(2)}</span>
+            ),
+            sortable: true,
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            accessor: (row) => getStatusBadge(row.status),
+            sortable: true,
+        },
+        {
+            key: 'created_at',
+            header: 'Date',
+            accessor: (row) => (
+                <span className="text-sm text-muted-foreground">
+                    {new Date(row.created_at).toLocaleString()}
+                </span>
+            ),
+            sortable: true,
+        },
+    ];
+
+    const actions = (row: Transaction) => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                {row.status === 'pending' && (
+                    <DropdownMenuItem onClick={() => handleFulfill(row.id)}>
+                        <Check className="h-4 w-4 mr-2" />
+                        Fulfill Order
+                    </DropdownMenuItem>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Transactions" />
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                <DataTable
+                    data={transactions}
+                    columns={columns}
+                    searchable
+                    searchPlaceholder="Search by reference, user, or phone..."
+                    searchKeys={['reference', 'user.name', 'user.email', 'phone_number']}
+                    pagination
+                    pageSize={15}
+                    actions={actions}
+                    loading={loading}
+                    emptyMessage="No transactions found"
+                    title="Transactions"
+                    titleIcon={<History className="h-5 w-5" />}
+                />
+            </div>
+        </AppLayout>
+    );
+}
+

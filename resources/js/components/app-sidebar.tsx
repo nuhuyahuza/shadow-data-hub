@@ -33,6 +33,9 @@ export function AppSidebar() {
     const { auth } = page.props;
     const user = auth.user;
     const isAdmin = user?.role === 'admin';
+    const isAgent = user?.role === 'agent';
+    const isAdminRoute = page.url.startsWith('/admin');
+    const isAgentRoute = page.url.startsWith('/agent');
 
     const mainNavItems: NavItem[] = [
         {
@@ -62,35 +65,51 @@ export function AppSidebar() {
         },
     ];
 
-    const adminNavItems: NavItem[] = isAdmin
-        ? [
-              {
-                  title: 'Admin Dashboard',
-                  href: '/admin/dashboard',
-                  icon: Shield,
-              },
-              {
-                  title: 'Users',
-                  href: '/admin/users',
-                  icon: Users,
-              },
-              {
-                  title: 'Packages',
-                  href: '/admin/packages',
-                  icon: Package,
-              },
-              {
-                  title: 'Transactions',
-                  href: '/admin/transactions',
-                  icon: History,
-              },
-              {
-                  title: 'Vendor Logs',
-                  href: '/admin/vendor-logs',
-                  icon: FileText,
-              },
-          ]
-        : [];
+    const adminNavItems: NavItem[] = [
+        {
+            title: 'Users',
+            href: '/admin/users',
+            icon: Users,
+        },
+        {
+            title: 'Packages',
+            href: '/admin/packages',
+            icon: Package,
+        },
+        {
+            title: 'Transactions',
+            href: '/admin/transactions',
+            icon: History,
+        },
+        {
+            title: 'Vendor Logs',
+            href: '/admin/vendor-logs',
+            icon: FileText,
+        },
+    ];
+
+    const agentNavItems: NavItem[] = [
+        {
+            title: 'Transactions',
+            href: '/agent/transactions',
+            icon: History,
+        },
+        {
+            title: 'Users',
+            href: '/agent/users',
+            icon: Users,
+        },
+        {
+            title: 'Packages',
+            href: '/agent/packages',
+            icon: Package,
+        },
+    ];
+
+    // Determine which navigation to show based on current route
+    const showAdminNav = isAdmin && isAdminRoute;
+    const showAgentNav = (isAgent || isAdmin) && isAgentRoute;
+    const showUserNav = !isAdminRoute && !isAgentRoute;
 
     return (
         <Sidebar collapsible="icon" variant="floating">
@@ -98,7 +117,16 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link
+                                href={
+                                    isAdminRoute
+                                        ? '/admin/dashboard'
+                                        : isAgentRoute
+                                          ? '/agent/transactions'
+                                          : dashboard()
+                                }
+                                prefetch
+                            >
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -107,12 +135,41 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
-                {isAdmin && adminNavItems.length > 0 && (
+                {showUserNav && <NavMain items={mainNavItems} />}
+                {showAdminNav && (
                     <SidebarGroup className="px-2 py-0">
-                        <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                        <SidebarGroupLabel className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            Admin
+                        </SidebarGroupLabel>
                         <SidebarMenu>
                             {adminNavItems.map((item) => (
+                                <SidebarMenuItem key={item.title}>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={page.url.startsWith(
+                                            resolveUrl(item.href)
+                                        )}
+                                        tooltip={{ children: item.title }}
+                                    >
+                                        <Link href={item.href} prefetch>
+                                            {item.icon && <item.icon />}
+                                            <span>{item.title}</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenu>
+                    </SidebarGroup>
+                )}
+                {showAgentNav && (
+                    <SidebarGroup className="px-2 py-0">
+                        <SidebarGroupLabel className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Agent
+                        </SidebarGroupLabel>
+                        <SidebarMenu>
+                            {agentNavItems.map((item) => (
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton
                                         asChild

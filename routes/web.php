@@ -79,6 +79,19 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('transactions');
     })->name('transactions');
 
+    // Agent routes
+    Route::middleware([\App\Http\Middleware\EnsureUserIsAgent::class])->prefix('agent')->group(function () {
+        Route::get('transactions', function () {
+            return Inertia::render('agent/transactions');
+        })->name('agent.transactions');
+        Route::get('users', function () {
+            return Inertia::render('agent/users');
+        })->name('agent.users');
+        Route::get('packages', function () {
+            return Inertia::render('agent/packages');
+        })->name('agent.packages');
+    });
+
     // Admin routes
     Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
         Route::get('/', function () {

@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureUserIsAdmin
+class EnsureUserIsAgent
 {
     /**
      * Handle an incoming request.
@@ -21,25 +21,23 @@ class EnsureUserIsAdmin
         if (! $user) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'message' => 'Unauthenticated. Please log in to access admin area.',
+                    'message' => 'Unauthenticated. Please log in.',
                 ], 401);
             }
 
-            // Redirect to admin login for web requests
-            return redirect()->route('admin.login');
+            return redirect()->route('phone-login');
         }
 
-        // If authenticated but not admin
-        if (! $user->isAdmin()) {
+        // If authenticated but not agent or admin
+        if (! $user->isAgent() && ! $user->isAdmin()) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'message' => 'Unauthorized. Admin access required.',
+                    'message' => 'Unauthorized. Agent or admin access required.',
                 ], 403);
             }
 
-            // Redirect non-admin users to their dashboard with error message
             return redirect()->route('dashboard')
-                ->with('error', 'You do not have permission to access the admin area.');
+                ->with('error', 'You do not have permission to access this area.');
         }
 
         return $next($request);

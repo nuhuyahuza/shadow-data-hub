@@ -4,20 +4,12 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Users, Edit, UserCheck, UserX } from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Users',
-        href: '/admin/users',
+        href: '/agent/users',
     },
 ];
 
@@ -30,12 +22,12 @@ interface User {
     created_at: string;
 }
 
-export default function AdminUsers() {
+export default function AgentUsers() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/admin/users', {
+        fetch('/api/agent/users', {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json',
@@ -55,29 +47,6 @@ export default function AdminUsers() {
                 setLoading(false);
             });
     }, []);
-
-    const handleRoleUpdate = async (userId: string, newRole: string) => {
-        try {
-            const response = await fetch(`/api/admin/users/${userId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                credentials: 'include',
-                body: JSON.stringify({ role: newRole }),
-            });
-
-            if (response.ok) {
-                setUsers((prev) =>
-                    prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user))
-                );
-            }
-        } catch (error) {
-            console.error('Error updating user role:', error);
-        }
-    };
 
     const getRoleBadge = (role: string) => {
         const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
@@ -130,36 +99,6 @@ export default function AdminUsers() {
         },
     ];
 
-    const actions = (row: User) => (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                {row.role !== 'agent' && (
-                    <DropdownMenuItem onClick={() => handleRoleUpdate(row.id, 'agent')}>
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Promote to Agent
-                    </DropdownMenuItem>
-                )}
-                {row.role !== 'admin' && (
-                    <DropdownMenuItem onClick={() => handleRoleUpdate(row.id, 'admin')}>
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Promote to Admin
-                    </DropdownMenuItem>
-                )}
-                {row.role !== 'user' && (
-                    <DropdownMenuItem onClick={() => handleRoleUpdate(row.id, 'user')}>
-                        <UserX className="h-4 w-4 mr-2" />
-                        Demote to User
-                    </DropdownMenuItem>
-                )}
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Users" />
@@ -172,15 +111,13 @@ export default function AdminUsers() {
                     searchKeys={['name', 'email', 'phone']}
                     pagination
                     pageSize={15}
-                    actions={actions}
                     loading={loading}
                     emptyMessage="No users found"
-                    title="User Management"
+                    title="Users"
                     titleIcon={<Users className="h-5 w-5" />}
                 />
             </div>
         </AppLayout>
     );
 }
-
 

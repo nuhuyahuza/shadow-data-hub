@@ -35,8 +35,18 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 // Webhook route (no auth required, but should verify signature in production)
 Route::post('wallet/webhook', [WalletController::class, 'webhook']);
 
-// Admin routes
-Route::middleware(['auth', 'throttle:120,1', \App\Http\Middleware\EnsureUserIsAdmin::class])
+// Agent routes (with session middleware for cookie-based auth)
+Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureUserIsAgent::class])
+    ->prefix('agent')
+    ->group(function () {
+        Route::get('transactions', [\App\Http\Controllers\Agent\TransactionController::class, 'index']);
+        Route::post('transactions/{id}/fulfill', [\App\Http\Controllers\Agent\TransactionController::class, 'fulfill']);
+        Route::get('users', [\App\Http\Controllers\Agent\UserController::class, 'index']);
+        Route::get('packages', [\App\Http\Controllers\Agent\DataPackageController::class, 'index']);
+    });
+
+// Admin routes (with session middleware for cookie-based auth)
+Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureUserIsAdmin::class])
     ->prefix('admin')
     ->group(function () {
         Route::get('dashboard', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
