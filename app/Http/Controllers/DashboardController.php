@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Services\WalletService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,10 +18,20 @@ class DashboardController extends Controller
     /**
      * Show the dashboard.
      */
-    public function index(Request $request): Response
+    public function index(Request $request): RedirectResponse|Response
     {
         $user = $request->user();
 
+        // Redirect based on user role
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if ($user->role === 'agent') {
+            return redirect()->route('agent.transactions');
+        }
+
+        // Regular user dashboard
         // Get wallet balance
         $wallet = $this->walletService->getWallet($user);
 
