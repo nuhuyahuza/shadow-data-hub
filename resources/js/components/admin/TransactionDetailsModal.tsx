@@ -20,37 +20,13 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { CheckCircle2, XCircle, Clock, Package, User, Phone, DollarSign, Calendar, Ban, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { type Transaction, type TransactionStatus } from '@/types';
 
 interface TransactionDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    transaction: {
-        id: number;
-        reference: string;
-        type: string;
-        status: "pending" | "refunded" | "failed";
-        amount: number | string;
-        network?: string;
-        phone_number?: string;
-        user?: {
-            id: string;
-            name: string;
-            email?: string;
-            phone?: string;
-        };
-        package?: {
-            id: number;
-            name: string;
-            network: string;
-            data_size: string;
-            price: number | string;
-        };
-        vendor_reference?: string;
-        vendor_response?: Record<string, unknown>;
-        created_at: string;
-        updated_at: string;
-    } | null;
-    onStatusUpdate?: (transactionId: number, newStatus: string) => Promise<void>;
+    transaction: Transaction | null;
+    onStatusUpdate?: (transactionId: number, newStatus: TransactionStatus) => Promise<void>;
     onRefund?: (transactionId: number) => Promise<void>;
     apiPrefix?: 'admin' | 'agent';
 }
@@ -63,7 +39,7 @@ export default function TransactionDetailsModal({
     onRefund,
 }: TransactionDetailsModalProps) {
     const { addToast } = useToast();
-    const [selectedStatus, setSelectedStatus] = useState<string>(transaction?.status || '');
+    const [selectedStatus, setSelectedStatus] = useState<TransactionStatus>(transaction?.status || 'pending');
     const [updating, setUpdating] = useState(false);
     const [refunding, setRefunding] = useState(false);
 
@@ -340,7 +316,7 @@ export default function TransactionDetailsModal({
                                 <div className="flex items-center gap-3">
                                     <Select
                                         value={selectedStatus}
-                                        onValueChange={setSelectedStatus}
+                                        onValueChange={(value) => setSelectedStatus(value as TransactionStatus)}
                                         disabled={updating || refunding}
                                     >
                                         <SelectTrigger className="flex-1">
@@ -394,8 +370,7 @@ export default function TransactionDetailsModal({
 
                     {/* Refund Button - Only show for failed/pending purchase transactions */}
                     {onRefund && transaction.type === 'purchase' && 
-                     (transaction.status === 'failed' || transaction.status === 'pending') &&
-                     transaction.status !== 'refunded' && (
+                     (transaction.status === 'failed' || transaction.status === 'pending') && (
                         <>
                             <Separator />
                             <div className="space-y-3">

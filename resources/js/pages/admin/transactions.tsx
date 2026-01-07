@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type Transaction, type TransactionStatus } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,33 +22,6 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/admin/transactions',
     },
 ];
-
-interface Transaction extends Record<string, unknown> {
-    id: number;
-    reference: string;
-    user?: {
-        id: string;
-        name: string;
-        email?: string;
-        phone?: string;
-    };
-    package?: {
-        id: number;
-        name: string;
-        network: string;
-        data_size: string;
-        price: number | string;
-    };
-    type: string;
-    amount: number | string;
-    status: string;
-    network?: string;
-    phone_number?: string;
-    vendor_reference?: string;
-    vendor_response?: Record<string, unknown>;
-    created_at: string;
-    updated_at: string;
-}
 
 export default function AdminTransactions() {
     const { addToast } = useToast();
@@ -243,7 +216,7 @@ export default function AdminTransactions() {
         }
     };
 
-    const handleStatusUpdateInModal = async (transactionId: number, newStatus: string) => {
+    const handleStatusUpdateInModal = async (transactionId: number, newStatus: TransactionStatus) => {
         const response = await fetch(`/api/admin/transactions/${transactionId}/status`, {
             method: 'PATCH',
             headers: {
