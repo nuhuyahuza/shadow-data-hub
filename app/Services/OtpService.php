@@ -69,6 +69,20 @@ class OtpService
      */
     public function verifyOtp(string $phone, string $code): array
     {
+        $provider = config('services.sms.provider', 'twilio');
+        $config = config('services.sms.hellio');
+
+        // If Hellio verification is enabled and provider is hellio, verify via Hellio API first
+        if ($provider === 'hellio' && ! empty($config['verify_enabled']) && $config['verify_enabled']) {
+            $hellioVerification = $this->verifyViaHellio($phone, $code);
+            if (! $hellioVerification) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid OTP code.',
+                ];
+            }
+        }
+
         $otp = OtpVerification::where('phone', $phone)
             ->whereNull('verified_at')
             ->latest()
@@ -130,6 +144,7 @@ class OtpService
                 'twilio' => $this->sendViaTwilio($phone, $message),
                 'nexmo' => $this->sendViaNexmo($phone, $message),
                 'termii' => $this->sendViaTermii($phone, $message),
+                'hellio' => $this->sendViaHellio($phone, $message),
                 default => $this->sendViaLog($phone, $code),
             };
         } catch (\Exception $e) {
@@ -190,6 +205,141 @@ class OtpService
 
         // TODO: Implement Termii API integration
         Log::info("Termii SMS would be sent to {$phone}: {$message}");
+    }
+
+    /**
+     * Verify OTP via Hellio API.
+     */
+    protected function verifyViaHellio(string $phone, string $code): bool
+    {
+        $config = config('services.sms.hellio');
+        if (! $config['username'] || ! $config['password']) {
+            Log::error('Hellio verification failed: credentials not configured');
+            return false;
+        }
+
+        $baseUrl = 'https://api.helliomessaging.com/v3/otp/verify?';
+        
+        // Format phone number (remove + prefix if present, Hellio expects format like 233242813656)
+        $mobileNumber = $this->formatPhone($phone);
+
+        $params = [
+            'username' => $config['username'],
+            'password' => $config['password'],
+            'mobile_number' => $mobileNumber,
+            'otp' => $code,
+        ];
+
+        $ch = curl_init($baseUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            Log::error('Hellio OTP verification cURL error', [
+                'phone' => $phone,
+                'error' => $curlError,
+            ]);
+            return false;
+        }
+
+        if ($httpCode !== 200) {
+            Log::error('Hellio OTP verification failed', [
+                'phone' => $phone,
+                'http_code' => $httpCode,
+                'response' => $result,
+            ]);
+            return false;
+        }
+
+        // Parse response - Hellio typically returns JSON with success status
+        $response = json_decode($result, true);
+        
+        // Check if verification was successful
+        // Adjust this based on actual Hellio API response format
+        $isValid = isset($response['status']) && 
+                   (strtolower($response['status']) === 'success' || 
+                    strtolower($response['status']) === 'verified' ||
+                    (isset($response['verified']) && $response['verified'] === true));
+
+        if ($isValid) {
+            Log::info('Hellio OTP verification successful', [
+                'phone' => $phone,
+                'response' => $result,
+            ]);
+        } else {
+            Log::warning('Hellio OTP verification failed', [
+                'phone' => $phone,
+                'response' => $result,
+            ]);
+        }
+
+        return $isValid;
+    }
+
+    /**
+     * Send SMS via Hellio.
+     */
+    protected function sendViaHellio(string $phone, string $message): void
+    {
+        $config = config('services.sms.hellio');
+        if (! $config['username'] || ! $config['password'] || ! $config['sender_id']) {
+            throw new \Exception('Hellio credentials not configured');
+        }
+
+        $baseUrl = 'https://api.helliomessaging.com/v3/otp/send';
+        
+        // Format phone number (remove + prefix if present, Hellio expects format like 233242813656)
+        $mobileNumber = $this->formatPhone($phone);
+
+        $params = [
+            'username' => $config['username'],
+            'password' => $config['password'],
+            'senderId' => $config['sender_id'],
+            'mobile_number' => $mobileNumber,
+            'tokenlength' => 6,
+            'timeout' => 2, // 2 minutes
+            'messageType' => 1, // Flash message
+            'message' => $message,
+        ];
+
+        // Add recipient_email if provided
+        if (! empty($config['recipient_email'])) {
+            $params['recipient_email'] = $config['recipient_email'];
+        }
+
+        $ch = curl_init($baseUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            throw new \Exception("Hellio cURL error: {$curlError}");
+        }
+
+        if ($httpCode !== 200) {
+            Log::error('Hellio SMS sending failed', [
+                'phone' => $phone,
+                'http_code' => $httpCode,
+                'response' => $result,
+            ]);
+            throw new \Exception("Hellio API returned HTTP {$httpCode}");
+        }
+
+        Log::info('Hellio SMS sent successfully', [
+            'phone' => $phone,
+            'response' => $result,
+        ]);
     }
 
     /**
