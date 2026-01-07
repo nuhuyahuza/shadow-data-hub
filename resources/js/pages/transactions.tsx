@@ -93,38 +93,42 @@ export default function Transactions() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="mb-4 flex gap-2">
-                            {['all', 'success', 'failed', 'pending', 'cancelled'].map((f) => (
+                        <div className="mb-4 flex gap-2 flex-wrap">
+                            {['all', 'success', 'failed', 'pending', 'cancelled'].map((f, index) => (
                                 <button
                                     key={f}
                                     onClick={() => {
                                         setFilter(f);
                                         setLoading(true);
                                     }}
-                                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                                    className={`px-3 py-1 rounded text-sm transition-all duration-200 hover:scale-105 ${
                                         filter === f
-                                            ? 'bg-primary text-primary-foreground'
+                                            ? 'bg-primary text-primary-foreground shadow-md'
                                             : 'bg-muted hover:bg-muted/80'
-                                    }`}
+                                    } animate-fade-in`}
+                                    style={{ animationDelay: `${index * 50}ms` }}
                                 >
                                     {f.charAt(0).toUpperCase() + f.slice(1)}
                                 </button>
                             ))}
                         </div>
                         {loading ? (
-                            <div className="text-center py-8">
+                            <div className="text-center py-8 animate-fade-in">
+                                <div className="inline-block h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-2"></div>
                                 <p className="text-muted-foreground">Loading transactions...</p>
                             </div>
                         ) : transactions.length === 0 ? (
-                            <div className="text-center py-8">
+                            <div className="text-center py-8 animate-fade-in">
+                                <History className="h-12 w-12 mx-auto text-muted-foreground/30 mb-2" />
                                 <p className="text-muted-foreground">No transactions found</p>
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                {transactions.map((transaction) => (
+                                {transactions.map((transaction, index) => (
                                     <div
                                         key={transaction.id}
-                                        className="flex items-center justify-between border-b pb-3"
+                                        className="flex items-center justify-between border-b pb-3 transition-all duration-200 hover:bg-muted/50 hover:px-2 hover:-mx-2 rounded-md cursor-pointer animate-slide-up"
+                                        style={{ animationDelay: `${index * 30}ms` }}
                                     >
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -136,7 +140,7 @@ export default function Transactions() {
                                                 <Badge
                                                     className={`${getStatusColor(
                                                         transaction.status
-                                                    )} text-white`}
+                                                    )} text-white transition-all duration-200`}
                                                 >
                                                     {transaction.status}
                                                 </Badge>

@@ -78,7 +78,7 @@ export default function AdminLogin() {
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <div className="grid gap-6">
-                    <div className="grid gap-2">
+                    <div className="grid gap-2 animate-fade-in">
                         <Label htmlFor="email">Email Address</Label>
                         <Input
                             id="email"
@@ -92,11 +92,16 @@ export default function AdminLogin() {
                             required
                             autoFocus
                             disabled={loading}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                         />
-                        <InputError message={errors.email} />
+                        {errors.email && (
+                            <div className="animate-slide-down">
+                                <InputError message={errors.email} />
+                            </div>
+                        )}
                     </div>
 
-                    <div className="grid gap-2">
+                    <div className="grid gap-2 animate-fade-in" style={{ animationDelay: '50ms' }}>
                         <Label htmlFor="password">Password</Label>
                         <Input
                             id="password"
@@ -109,17 +114,22 @@ export default function AdminLogin() {
                             placeholder="Enter your password"
                             required
                             disabled={loading}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                         />
-                        <InputError message={errors.password} />
+                        {errors.password && (
+                            <div className="animate-slide-down">
+                                <InputError message={errors.password} />
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 animate-fade-in" style={{ animationDelay: '100ms' }}>
                         <input
                             id="remember"
                             type="checkbox"
                             checked={remember}
                             onChange={(e) => setRemember(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary transition-all duration-200 cursor-pointer"
                             disabled={loading}
                         />
                         <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
@@ -129,7 +139,7 @@ export default function AdminLogin() {
 
                     <Button
                         type="submit"
-                        className="w-full"
+                        className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         disabled={loading || !email || !password}
                     >
                         {loading && <Spinner />}

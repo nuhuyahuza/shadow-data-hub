@@ -135,7 +135,7 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                         )}
                         {searchable && (
                             <div className="relative w-full max-w-sm">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors duration-200" />
                                 <Input
                                     placeholder={searchPlaceholder}
                                     value={searchQuery}
@@ -143,7 +143,7 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                                         setSearchQuery(e.target.value);
                                         setCurrentPage(1);
                                     }}
-                                    className="pl-9"
+                                    className="pl-9 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
                         )}
@@ -152,12 +152,12 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
             )}
             <CardContent>
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
+                    <div className="flex items-center justify-center py-12 animate-fade-in">
                         <Spinner />
                         <span className="ml-2 text-muted-foreground">Loading...</span>
                     </div>
                 ) : paginatedData.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
+                    <div className="text-center py-12 text-muted-foreground animate-fade-in">
                         {emptyMessage}
                     </div>
                 ) : (
@@ -170,7 +170,7 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                                             <th
                                                 key={column.key}
                                                 className={cn(
-                                                    'px-4 py-3 text-left text-sm font-medium text-muted-foreground',
+                                                    'px-4 py-3 text-left text-sm font-medium text-muted-foreground transition-colors duration-200',
                                                     column.sortable && 'cursor-pointer hover:bg-muted/50',
                                                     column.className
                                                 )}
@@ -193,7 +193,8 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                                     {paginatedData.map((row, index) => (
                                         <tr
                                             key={index}
-                                            className="border-b hover:bg-muted/50 transition-colors"
+                                            className="border-b hover:bg-muted/50 transition-all duration-200 hover:shadow-sm animate-slide-up"
+                                            style={{ animationDelay: `${index * 30}ms` }}
                                         >
                                             {columns.map((column) => (
                                                 <td
@@ -215,7 +216,7 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                         </div>
 
                         {pagination && sortedData.length > 0 && (
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t animate-fade-in">
                                 <div className="text-sm text-muted-foreground">
                                     Showing {(currentPage - 1) * pageSize + 1} to{' '}
                                     {Math.min(currentPage * pageSize, sortedData.length)} of{' '}
@@ -228,6 +229,7 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                                             size="sm"
                                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                                             disabled={currentPage === 1}
+                                            className="transition-all duration-200 hover:scale-105"
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                             Previous
@@ -240,6 +242,7 @@ export default function DataTable<T extends Record<string, unknown> = Record<str
                                             size="sm"
                                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                                             disabled={currentPage === totalPages}
+                                            className="transition-all duration-200 hover:scale-105"
                                         >
                                             Next
                                             <ChevronRight className="h-4 w-4" />

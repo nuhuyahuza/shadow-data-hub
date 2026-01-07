@@ -111,63 +111,77 @@ export default function AdminDashboard() {
             <Head title="Admin Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 {/* Statistics Cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <StatsCard
-                        title="Total Users"
-                        value={stats.total_users}
-                        icon={Users}
-                        description="All registered users"
-                    />
-                    <StatsCard
-                        title="Total Revenue"
-                        value={`GHS ${Number(stats.total_revenue).toFixed(2)}`}
-                        icon={DollarSign}
-                        description="All-time revenue"
-                    />
-                    <StatsCard
-                        title="Total Profit"
-                        value={`GHS ${Number(stats.total_profit).toFixed(2)}`}
-                        icon={TrendingUp}
-                        description="Net profit margin"
-                    />
-                    <StatsCard
-                        title="Today's Revenue"
-                        value={`GHS ${Number(stats.today_revenue).toFixed(2)}`}
-                        icon={DollarSign}
-                        description="Revenue today"
-                    />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+                    <div className="animate-scale-in" style={{ animationDelay: '0ms' }}>
+                        <StatsCard
+                            title="Total Users"
+                            value={stats.total_users}
+                            icon={Users}
+                            description="All registered users"
+                        />
+                    </div>
+                    <div className="animate-scale-in" style={{ animationDelay: '50ms' }}>
+                        <StatsCard
+                            title="Total Revenue"
+                            value={`GHS ${Number(stats.total_revenue).toFixed(2)}`}
+                            icon={DollarSign}
+                            description="All-time revenue"
+                        />
+                    </div>
+                    <div className="animate-scale-in" style={{ animationDelay: '100ms' }}>
+                        <StatsCard
+                            title="Total Profit"
+                            value={`GHS ${Number(stats.total_profit).toFixed(2)}`}
+                            icon={TrendingUp}
+                            description="Net profit margin"
+                        />
+                    </div>
+                    <div className="animate-scale-in" style={{ animationDelay: '150ms' }}>
+                        <StatsCard
+                            title="Today's Revenue"
+                            value={`GHS ${Number(stats.today_revenue).toFixed(2)}`}
+                            icon={DollarSign}
+                            description="Revenue today"
+                        />
+                    </div>
                 </div>
 
                 {/* Additional Stats Row */}
-                <div className="grid gap-4 md:grid-cols-3">
-                    <StatsCard
-                        title="Pending Transactions"
-                        value={stats.pending_transactions}
-                        icon={Clock}
-                        description="Awaiting processing"
-                    />
-                    <StatsCard
-                        title="Failed Transactions"
-                        value={stats.failed_transactions}
-                        icon={AlertCircle}
-                        description="Require attention"
-                    />
-                    <StatsCard
-                        title="Vendor Balance"
-                        value={`GHS ${Number(stats.vendor_balance).toFixed(2)}`}
-                        icon={Shield}
-                        description="Available balance"
-                    />
+                <div className="grid gap-4 md:grid-cols-3 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                    <div className="animate-scale-in" style={{ animationDelay: '250ms' }}>
+                        <StatsCard
+                            title="Pending Transactions"
+                            value={stats.pending_transactions}
+                            icon={Clock}
+                            description="Awaiting processing"
+                        />
+                    </div>
+                    <div className="animate-scale-in" style={{ animationDelay: '300ms' }}>
+                        <StatsCard
+                            title="Failed Transactions"
+                            value={stats.failed_transactions}
+                            icon={AlertCircle}
+                            description="Require attention"
+                        />
+                    </div>
+                    <div className="animate-scale-in" style={{ animationDelay: '350ms' }}>
+                        <StatsCard
+                            title="Vendor Balance"
+                            value={`GHS ${Number(stats.vendor_balance).toFixed(2)}`}
+                            icon={Shield}
+                            description="Available balance"
+                        />
+                    </div>
                 </div>
 
                 {/* Charts Section */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 animate-slide-up" style={{ animationDelay: '400ms' }}>
                     <RevenueChart data={charts.revenue_trends} />
                     <UserGrowthChart data={charts.user_growth} />
                 </div>
 
                 {/* Recent Activity and Quick Actions */}
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-3 animate-fade-in" style={{ animationDelay: '500ms' }}>
                     <div className="md:col-span-2">
                         <RecentActivity activities={recent_activity} />
                     </div>

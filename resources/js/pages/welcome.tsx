@@ -1,8 +1,8 @@
 import { dashboard, login, phoneLogin } from '@/routes';
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
-import { Search, Wifi, Filter, Package, Zap, Clock, ArrowRight } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Wifi, Filter, Package, Zap, Clock, ArrowRight, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getNetworkName, getNetworkColor } from '@/services/authService';
@@ -29,6 +29,9 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
     const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
     const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+    const headerRef = useRef<HTMLElement>(null);
+    const heroRef = useRef<HTMLElement>(null);
 
     // Filter packages based on search and network
     const filteredPackages = useMemo(() => {
@@ -77,6 +80,15 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
 
     const networks = ['mtn', 'telecel', 'airteltigo'] as const;
 
+    // Handle scroll for header backdrop blur
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     return (
         <>
             <Head title="Data Hub - Buy Data Bundles">
@@ -88,18 +100,25 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
             </Head>
             <div className="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 {/* Header */}
-                <header className="border-b border-[#19140035] bg-white dark:border-[#3E3E3A] dark:bg-[#161615]">
+                <header
+                    ref={headerRef}
+                    className={`sticky top-0 z-50 border-b border-[#19140035] transition-all duration-300 ${
+                        isScrolled
+                            ? 'bg-white/80 backdrop-blur-md shadow-sm dark:bg-[#161615]/80 dark:border-[#3E3E3A]'
+                            : 'bg-white dark:bg-[#161615] dark:border-[#3E3E3A]'
+                    }`}
+                >
                     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Wifi className="h-6 w-6 text-[#f53003] dark:text-[#FF4433]" />
+                            <div className="flex items-center gap-2 animate-fade-in">
+                                <Wifi className="h-6 w-6 text-[#f53003] dark:text-[#FF4433] transition-transform duration-300 hover:scale-110" />
                                 <h1 className="text-xl font-semibold">Data Hub</h1>
                             </div>
                             <nav className="flex items-center gap-4">
                                 {auth.user ? (
                                     <Link
                                         href={dashboard()}
-                                        className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                                        className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] transition-all duration-200 hover:border-[#1915014a] hover:scale-105 dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                     >
                                         Dashboard
                                     </Link>
@@ -107,14 +126,14 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                                     <>
                                         <Link
                                             href={login()}
-                                            className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
+                                            className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] transition-all duration-200 hover:border-[#19140035] hover:scale-105 dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
                                         >
                                             Log in
                                         </Link>
                                         {canRegister && (
                                             <Link
                                                 href={phoneLogin()}
-                                                className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                                                className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] transition-all duration-200 hover:border-[#1915014a] hover:scale-105 dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                             >
                                                 Sign Up
                                             </Link>
@@ -127,13 +146,21 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                 </header>
 
                 {/* Hero Section */}
-                <section className="border-b border-[#19140035] bg-gradient-to-b from-white to-[#FDFDFC] py-12 dark:border-[#3E3E3A] dark:from-[#161615] dark:to-[#0a0a0a]">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="text-center">
-                            <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+                <section
+                    ref={heroRef}
+                    className="relative border-b border-[#19140035] bg-gradient-to-b from-white via-[#FDFDFC] to-white py-16 dark:border-[#3E3E3A] dark:from-[#161615] dark:via-[#0a0a0a] dark:to-[#161615] overflow-hidden"
+                >
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 opacity-30 dark:opacity-20">
+                        <div className="absolute top-0 left-1/4 h-64 w-64 rounded-full bg-yellow-400 blur-3xl animate-pulse"></div>
+                        <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-blue-400 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+                    </div>
+                    <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <div className="text-center animate-slide-down">
+                            <h2 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl bg-gradient-to-r from-[#1b1b18] to-[#706f6c] dark:from-[#EDEDEC] dark:to-[#A1A09A] bg-clip-text text-transparent">
                                 Buy Data Bundles
                             </h2>
-                            <p className="mt-4 text-lg text-[#706f6c] dark:text-[#A1A09A]">
+                            <p className="mt-4 text-lg text-[#706f6c] dark:text-[#A1A09A] animate-fade-in" style={{ animationDelay: '100ms' }}>
                                 Fast, reliable data bundles for MTN, Telecel, and AirtelTigo
                             </p>
                         </div>
@@ -141,43 +168,45 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                 </section>
 
                 {/* Search and Filter Section */}
-                <section className="sticky top-0 z-10 border-b border-[#19140035] bg-white/95 backdrop-blur-sm dark:border-[#3E3E3A] dark:bg-[#161615]/95">
+                <section className="sticky top-16 z-10 border-b border-[#19140035] bg-white/95 backdrop-blur-md shadow-sm dark:border-[#3E3E3A] dark:bg-[#161615]/95 transition-all duration-300">
                     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slide-down">
                             {/* Search */}
-                            <div className="relative flex-1 max-w-md">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#706f6c] dark:text-[#A1A09A]" />
+                            <div className="relative flex-1 max-w-md group">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#706f6c] dark:text-[#A1A09A] transition-colors duration-200 group-focus-within:text-[#1b1b18] dark:group-focus-within:text-[#EDEDEC]" />
                                 <Input
                                     type="text"
                                     placeholder="Search packages..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10"
+                                    className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-[#19140035]/20 dark:focus:ring-[#3E3E3A]/20"
                                 />
                             </div>
 
                             {/* Network Filters */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                                 <Filter className="h-4 w-4 text-[#706f6c] dark:text-[#A1A09A]" />
                                 <span className="text-sm text-[#706f6c] dark:text-[#A1A09A]">Filter:</span>
                                 <Button
                                     variant={selectedNetwork === null ? 'default' : 'outline'}
                                     size="sm"
                                     onClick={() => setSelectedNetwork(null)}
+                                    className="transition-all duration-200 hover:scale-105"
                                 >
                                     All
                                 </Button>
-                                {networks.map((network) => (
+                                {networks.map((network, index) => (
                                     <Button
                                         key={network}
                                         variant={selectedNetwork === network ? 'default' : 'outline'}
                                         size="sm"
                                         onClick={() => setSelectedNetwork(network)}
-                                        className={
+                                        className={`transition-all duration-200 hover:scale-105 ${
                                             selectedNetwork === network
                                                 ? `${getNetworkColor(network)} text-white`
                                                 : ''
-                                        }
+                                        }`}
+                                        style={{ animationDelay: `${index * 50}ms` }}
                                     >
                                         {getNetworkName(network)}
                                     </Button>
@@ -190,9 +219,15 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                 {/* Packages Section */}
                 <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                     {filteredPackages.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                                No packages found. Try adjusting your search or filters.
+                        <div className="text-center py-16 animate-fade-in">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#19140035]/10 dark:bg-[#3E3E3A]/20 mb-4">
+                                <Inbox className="h-8 w-8 text-[#706f6c] dark:text-[#A1A09A]" />
+                            </div>
+                            <p className="text-lg font-medium text-[#706f6c] dark:text-[#A1A09A] mb-2">
+                                No packages found
+                            </p>
+                            <p className="text-sm text-[#706f6c]/80 dark:text-[#A1A09A]/80">
+                                Try adjusting your search or filters
                             </p>
                         </div>
                     ) : (
@@ -204,10 +239,10 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                                     if (networkPackages.length === 0) return null;
 
                                     return (
-                                        <div key={network} className="space-y-4">
+                                        <div key={network} className="space-y-4 animate-slide-up">
                                             <div className="flex items-center gap-3">
                                                 <h3
-                                                    className={`text-2xl font-semibold ${getNetworkColor(network)} text-white px-4 py-2 rounded-lg`}
+                                                    className={`text-2xl font-semibold ${getNetworkColor(network)} text-white px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105`}
                                                 >
                                                     {getNetworkName(network)} Packages
                                                 </h3>
@@ -216,13 +251,18 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                                                 </span>
                                             </div>
                                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                                {networkPackages.map((pkg) => (
-                                                    <PackageCard
+                                                {networkPackages.map((pkg, index) => (
+                                                    <div
                                                         key={pkg.id}
-                                                        pkg={pkg}
-                                                        onSelect={handlePackageSelect}
-                                                        isAuthenticated={!!auth.user}
-                                                    />
+                                                        className="animate-scale-in"
+                                                        style={{ animationDelay: `${index * 50}ms` }}
+                                                    >
+                                                        <PackageCard
+                                                            pkg={pkg}
+                                                            onSelect={handlePackageSelect}
+                                                            isAuthenticated={!!auth.user}
+                                                        />
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
@@ -230,13 +270,18 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                                 })
                             ) : (
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                    {filteredPackages.map((pkg) => (
-                                        <PackageCard
+                                    {filteredPackages.map((pkg, index) => (
+                                        <div
                                             key={pkg.id}
-                                            pkg={pkg}
-                                            onSelect={handlePackageSelect}
-                                            isAuthenticated={!!auth.user}
-                                        />
+                                            className="animate-scale-in"
+                                            style={{ animationDelay: `${index * 50}ms` }}
+                                        >
+                                            <PackageCard
+                                                pkg={pkg}
+                                                onSelect={handlePackageSelect}
+                                                isAuthenticated={!!auth.user}
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -245,8 +290,15 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                 </main>
 
                 {/* Footer */}
-                <footer className="border-t border-[#19140035] bg-white py-8 dark:border-[#3E3E3A] dark:bg-[#161615]">
-                    <div className="mx-auto max-w-7xl px-4 text-center text-sm text-[#706f6c] dark:text-[#A1A09A] sm:px-6 lg:px-8">
+                <footer className="relative border-t border-[#19140035] bg-white py-8 dark:border-[#3E3E3A] dark:bg-[#161615] overflow-hidden">
+                    {/* Subtle background pattern */}
+                    <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05]">
+                        <div className="absolute inset-0" style={{
+                            backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)',
+                            backgroundSize: '40px 40px'
+                        }}></div>
+                    </div>
+                    <div className="relative mx-auto max-w-7xl px-4 text-center text-sm text-[#706f6c] dark:text-[#A1A09A] sm:px-6 lg:px-8 animate-fade-in">
                         <p>© {new Date().getFullYear()} Data Hub. All rights reserved.</p>
                     </div>
                 </footer>

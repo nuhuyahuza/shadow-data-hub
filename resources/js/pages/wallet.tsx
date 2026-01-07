@@ -42,30 +42,30 @@ export default function WalletPage({ wallet: initialWallet }: WalletProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Wallet" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
-                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+                <Card className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white border-0 shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.01] animate-scale-in">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-white">
-                            <Wallet className="h-5 w-5" />
+                            <Wallet className="h-5 w-5 transition-transform duration-300 hover:rotate-12" />
                             Wallet Overview
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <div>
-                                <p className="text-sm opacity-90">Current Balance</p>
+                            <div className="animate-slide-down">
+                                <p className="text-sm opacity-90 mb-1">Current Balance</p>
                                 <p className="text-4xl font-bold">
                                     GHS {Number(wallet.balance).toFixed(2)}
                                 </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20 animate-fade-in" style={{ animationDelay: '100ms' }}>
                                 <div>
-                                    <p className="text-xs opacity-75">Total Funded</p>
+                                    <p className="text-xs opacity-75 mb-1">Total Funded</p>
                                     <p className="text-xl font-semibold">
                                         GHS {Number(wallet.total_funded).toFixed(2)}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs opacity-75">Total Spent</p>
+                                    <p className="text-xs opacity-75 mb-1">Total Spent</p>
                                     <p className="text-xl font-semibold">
                                         GHS {Number(wallet.total_spent).toFixed(2)}
                                     </p>
@@ -75,10 +75,10 @@ export default function WalletPage({ wallet: initialWallet }: WalletProps) {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="transition-all duration-300 hover:shadow-lg animate-scale-in" style={{ animationDelay: '100ms' }}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Plus className="h-5 w-5" />
+                            <Plus className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
                             Fund Wallet
                         </CardTitle>
                     </CardHeader>
@@ -90,7 +90,7 @@ export default function WalletPage({ wallet: initialWallet }: WalletProps) {
                             </p>
                             <Button
                                 onClick={() => setIsModalOpen(true)}
-                                className="w-full"
+                                className="w-full transition-all duration-200 hover:scale-105"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Fund Wallet

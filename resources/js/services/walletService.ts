@@ -24,7 +24,7 @@ export interface FundWalletResponse {
 
 export interface TransactionStatusResponse {
     success: boolean;
-    status: 'success' | 'pending' | 'failed' | 'not_found';
+    status: 'success' | 'pending' | 'failed'| 'refunded' | 'not_found';
     reference: string;
     message: string;
     wallet?: {

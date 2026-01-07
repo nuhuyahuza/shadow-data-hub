@@ -11,6 +11,7 @@ import {
     InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { verifyOtp, formatPhoneForDisplay } from '@/services/authService';
+import { CheckCircle2, Clock } from 'lucide-react';
 
 export default function OtpVerify() {
     const [code, setCode] = useState('');
@@ -113,56 +114,65 @@ export default function OtpVerify() {
 
             <div className="flex flex-col gap-6">
                 <div className="grid gap-4">
-                    <div className="flex justify-center">
+                    <div className="flex justify-center animate-scale-in">
                         <InputOTP
                             maxLength={6}
                             value={code}
                             onChange={setCode}
                             disabled={loading}
+                            className="gap-2"
                         >
-                            <InputOTPGroup>
-                                <InputOTPSlot index={0} />
-                                <InputOTPSlot index={1} />
-                                <InputOTPSlot index={2} />
-                                <InputOTPSlot index={3} />
-                                <InputOTPSlot index={4} />
-                                <InputOTPSlot index={5} />
+                            <InputOTPGroup className="gap-2">
+                                {[0, 1, 2, 3, 4, 5].map((index) => (
+                                    <InputOTPSlot
+                                        key={index}
+                                        index={index}
+                                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                    />
+                                ))}
                             </InputOTPGroup>
                         </InputOTP>
                     </div>
 
-                    <InputError message={error || undefined} />
+                    {error && (
+                        <div className="animate-slide-down">
+                            <InputError message={error} />
+                        </div>
+                    )}
 
                     {timeLeft > 0 && (
-                        <p className="text-center text-sm text-muted-foreground">
-                            Code expires in {formatTime(timeLeft)}
-                        </p>
+                        <div className="flex items-center justify-center gap-2 text-center text-sm text-muted-foreground animate-fade-in">
+                            <Clock className="h-4 w-4" />
+                            <p>Code expires in {formatTime(timeLeft)}</p>
+                        </div>
                     )}
 
                     <Button
                         onClick={handleVerify}
-                        className="w-full"
+                        className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         disabled={loading || code.length !== 6}
                     >
                         {loading && <Spinner />}
-                        Verify
+                        {loading ? 'Verifying...' : 'Verify'}
                     </Button>
                 </div>
 
-                <div className="text-center">
+                <div className="text-center animate-fade-in">
                     {canResend ? (
                         <Button
                             variant="ghost"
                             onClick={handleResend}
-                            className="text-sm"
+                            className="text-sm transition-all duration-200 hover:scale-105"
                             disabled={loading}
                         >
                             Resend code
                         </Button>
                     ) : (
-                        <p className="text-sm text-muted-foreground">
-                            Resend code in {formatTime(timeLeft)}
-                        </p>
+                        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            <p>Resend code in {formatTime(timeLeft)}</p>
+                        </div>
                     )}
                 </div>
             </div>

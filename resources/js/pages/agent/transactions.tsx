@@ -5,7 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { History, CheckCircle2, XCircle, Clock, Check } from 'lucide-react';
+import { History, CheckCircle2, XCircle, Clock, Check, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import {
     DropdownMenu,
@@ -14,6 +14,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -271,7 +272,6 @@ export default function AgentTransactions() {
     };
 
     const handleStatusUpdateInModal = async (transactionId: number, newStatus: string) => {
-        try {
             const response = await fetch(`/api/agent/transactions/${transactionId}/status`, {
                 method: 'PATCH',
                 headers: {
@@ -297,9 +297,6 @@ export default function AgentTransactions() {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to update status');
             }
-        } catch (error) {
-            throw error;
-        }
     };
 
     const actions = (row: Transaction) => (

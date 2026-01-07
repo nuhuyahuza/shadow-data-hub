@@ -147,7 +147,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                     </CardHeader>
                     <CardContent>
                         {insufficientFunds.show && (
-                            <Alert className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20">
+                            <Alert className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 animate-slide-down">
                                 <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                                 <AlertTitle className="text-orange-800 dark:text-orange-200">
                                     Insufficient Wallet Balance
@@ -162,7 +162,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                         </p>
                                         <Button
                                             onClick={() => setIsWalletModalOpen(true)}
-                                            className="mt-2 bg-orange-600 hover:bg-orange-700"
+                                            className="mt-2 bg-orange-600 hover:bg-orange-700 transition-all duration-200 hover:scale-105"
                                         >
                                             <Wallet className="h-4 w-4 mr-2" />
                                             Fund My Wallet
@@ -172,19 +172,20 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                             </Alert>
                         )}
                         {step === 'network' && (
-                            <div className="space-y-4">
+                            <div className="space-y-4 animate-fade-in">
                                 <p className="text-sm text-muted-foreground">
                                     Select a network
                                 </p>
                                 <div className="grid gap-4 md:grid-cols-3">
-                                    {networks.map((network) => (
+                                    {networks.map((network, index) => (
                                         <button
                                             key={network.id}
                                             onClick={() => {
                                                 setSelectedNetwork(network.id);
                                                 setStep('package');
                                             }}
-                                            className={`p-6 rounded-lg border-2 hover:border-primary transition-colors text-left ${network.color} text-white`}
+                                            className={`p-6 rounded-lg border-2 hover:border-primary transition-all duration-200 hover:scale-105 hover:shadow-lg text-left ${network.color} text-white animate-scale-in`}
+                                            style={{ animationDelay: `${index * 100}ms` }}
                                         >
                                             <h3 className="text-xl font-bold">{network.name}</h3>
                                         </button>
@@ -194,7 +195,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                         )}
 
                         {step === 'package' && selectedNetwork && (
-                            <div className="space-y-4">
+                            <div className="space-y-4 animate-slide-up">
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm text-muted-foreground">
                                         Select a package
@@ -206,19 +207,21 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                             setStep('network');
                                             setSelectedPackage(null);
                                         }}
+                                        className="transition-all duration-200 hover:scale-105"
                                     >
                                         Change Network
                                     </Button>
                                 </div>
                                 <div className="grid gap-4 md:grid-cols-2">
-                                    {packages.map((pkg) => (
+                                    {packages.map((pkg, index) => (
                                         <Card
                                             key={pkg.id}
-                                            className={`cursor-pointer hover:border-primary ${
+                                            className={`cursor-pointer transition-all duration-200 hover:border-primary hover:scale-105 hover:shadow-md ${
                                                 selectedPackage?.id === pkg.id
-                                                    ? 'border-primary'
+                                                    ? 'border-primary ring-2 ring-primary/20'
                                                     : ''
-                                            }`}
+                                            } animate-scale-in`}
+                                            style={{ animationDelay: `${index * 50}ms` }}
                                             onClick={() => setSelectedPackage(pkg)}
                                         >
                                             <CardContent className="p-4">
@@ -240,12 +243,14 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                     ))}
                                 </div>
                                 {selectedPackage && (
-                                    <Button
-                                        className="w-full"
-                                        onClick={() => handlePackageSelect(selectedPackage)}
-                                    >
-                                        Continue
-                                    </Button>
+                                    <div className="animate-slide-up">
+                                        <Button
+                                            className="w-full transition-all duration-200 hover:scale-105"
+                                            onClick={() => handlePackageSelect(selectedPackage)}
+                                        >
+                                            Continue
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         )}

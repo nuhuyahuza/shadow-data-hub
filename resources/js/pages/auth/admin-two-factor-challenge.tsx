@@ -77,10 +77,10 @@ export default function AdminTwoFactorChallenge() {
                 <div className="grid gap-6">
                     {!useRecoveryCode ? (
                         <>
-                            <div className="grid gap-2">
+                            <div className="grid gap-2 animate-fade-in">
                                 <Label htmlFor="code">Authentication Code</Label>
                                 <div className="relative">
-                                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors duration-200" />
                                     <Input
                                         id="code"
                                         type="text"
@@ -92,7 +92,7 @@ export default function AdminTwoFactorChallenge() {
                                         placeholder="000000"
                                         required
                                         autoFocus
-                                        className="pl-10 text-center text-2xl tracking-widest"
+                                        className="pl-10 text-center text-2xl tracking-widest transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                         disabled={loading}
                                         maxLength={6}
                                     />
@@ -100,20 +100,24 @@ export default function AdminTwoFactorChallenge() {
                                 <p className="text-xs text-muted-foreground">
                                     Enter the 6-digit code from your authenticator app
                                 </p>
-                                <InputError message={errors.code} />
+                                {errors.code && (
+                                    <div className="animate-slide-down">
+                                        <InputError message={errors.code} />
+                                    </div>
+                                )}
                             </div>
 
                             <button
                                 type="button"
                                 onClick={() => setUseRecoveryCode(true)}
-                                className="text-sm text-primary hover:underline text-left"
+                                className="text-sm text-primary hover:underline text-left transition-all duration-200 hover:scale-105"
                             >
                                 Use a recovery code instead
                             </button>
                         </>
                     ) : (
                         <>
-                            <div className="grid gap-2">
+                            <div className="grid gap-2 animate-slide-down">
                                 <Label htmlFor="recovery_code">Recovery Code</Label>
                                 <Input
                                     id="recovery_code"
@@ -127,11 +131,16 @@ export default function AdminTwoFactorChallenge() {
                                     required
                                     autoFocus
                                     disabled={loading}
+                                    className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     Enter one of your recovery codes to access your account
                                 </p>
-                                <InputError message={errors.recovery_code} />
+                                {errors.recovery_code && (
+                                    <div className="animate-slide-down">
+                                        <InputError message={errors.recovery_code} />
+                                    </div>
+                                )}
                             </div>
 
                             <button
@@ -140,7 +149,7 @@ export default function AdminTwoFactorChallenge() {
                                     setUseRecoveryCode(false);
                                     setRecoveryCode('');
                                 }}
-                                className="text-sm text-primary hover:underline text-left"
+                                className="text-sm text-primary hover:underline text-left transition-all duration-200 hover:scale-105"
                             >
                                 Use authentication code instead
                             </button>
@@ -149,7 +158,7 @@ export default function AdminTwoFactorChallenge() {
 
                     <Button
                         type="submit"
-                        className="w-full"
+                        className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         disabled={loading || (!useRecoveryCode && code.length !== 6) || (useRecoveryCode && !recoveryCode)}
                     >
                         {loading && <Spinner />}

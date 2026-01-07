@@ -28,7 +28,7 @@ interface TransactionDetailsModalProps {
         id: number;
         reference: string;
         type: string;
-        status: string;
+        status: "pending" | "refunded" | "failed";
         amount: number | string;
         network?: string;
         phone_number?: string;
@@ -61,7 +61,6 @@ export default function TransactionDetailsModal({
     transaction,
     onStatusUpdate,
     onRefund,
-    apiPrefix = 'admin',
 }: TransactionDetailsModalProps) {
     const { addToast } = useToast();
     const [selectedStatus, setSelectedStatus] = useState<string>(transaction?.status || '');
@@ -93,6 +92,7 @@ export default function TransactionDetailsModal({
                 variant: 'success',
             });
         } catch (error) {
+            console.log(error);
             addToast({
                 title: 'Update Failed',
                 description: 'Failed to update transaction status',

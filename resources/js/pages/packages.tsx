@@ -72,22 +72,27 @@ export default function Packages() {
                     </CardHeader>
                     <CardContent>
                         {loading ? (
-                            <div className="flex items-center justify-center py-12">
+                            <div className="flex items-center justify-center py-12 animate-fade-in">
                                 <Spinner />
                                 <span className="ml-2 text-muted-foreground">Loading packages...</span>
                             </div>
                         ) : error ? (
-                            <div className="text-center py-12">
+                            <div className="text-center py-12 animate-slide-down">
                                 <p className="text-destructive">{error}</p>
                             </div>
                         ) : packages.length === 0 ? (
-                            <div className="text-center py-12 text-muted-foreground">
-                                No packages available
+                            <div className="text-center py-12 text-muted-foreground animate-fade-in">
+                                <Package className="h-12 w-12 mx-auto text-muted-foreground/30 mb-2" />
+                                <p>No packages available</p>
                             </div>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-3">
-                                {packages.map((pkg) => (
-                                    <Card key={pkg.id}>
+                                {packages.map((pkg, index) => (
+                                    <Card
+                                        key={pkg.id}
+                                        className="transition-all duration-300 hover:shadow-lg hover:scale-105 hover:border-primary/20 animate-scale-in"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                    >
                                         <CardContent className="p-4">
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">

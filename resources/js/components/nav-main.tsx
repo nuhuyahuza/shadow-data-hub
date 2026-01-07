@@ -15,7 +15,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
             <SidebarMenu>
-                {items.map((item) => (
+                {items.map((item, index) => (
                     <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                             asChild
@@ -23,9 +23,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 resolveUrl(item.href),
                             )}
                             tooltip={{ children: item.title }}
+                            className="transition-all duration-200 hover:scale-105"
+                            style={{ animationDelay: `${index * 30}ms` }}
                         >
-                            <Link href={item.href} prefetch>
-                                {item.icon && <item.icon />}
+                            <Link href={item.href} prefetch className="transition-all duration-200">
+                                {item.icon && <item.icon className="transition-transform duration-200 group-hover:scale-110" />}
                                 <span>{item.title}</span>
                             </Link>
                         </SidebarMenuButton>
