@@ -41,7 +41,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure your SMS provider for OTP delivery.
-    | Supported providers: twilio, nexmo, termii
+    | Supported providers: twilio, nexmo, termii, hellio
     |
     */
     'sms' => [
@@ -59,6 +59,13 @@ return [
         'termii' => [
             'api_key' => env('TERMII_API_KEY'),
             'from' => env('TERMII_FROM_NUMBER'),
+        ],
+        'hellio' => [
+            'username' => env('HELLIO_USERNAME'),
+            'password' => env('HELLIO_PASSWORD'),
+            'sender_id' => env('HELLIO_SENDER_ID'),
+            'recipient_email' => env('HELLIO_RECIPIENT_EMAIL'),
+            'verify_enabled' => env('HELLIO_VERIFY_ENABLED', false),
         ],
     ],
 

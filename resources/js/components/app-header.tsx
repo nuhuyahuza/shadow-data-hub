@@ -70,7 +70,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const getInitials = useInitials();
     return (
         <>
-            <div className="border-b border-sidebar-border/80">
+            <div className="border-b border-sidebar-border/80 transition-all duration-300">
                 <div className="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden">
@@ -79,7 +79,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="mr-2 h-[34px] w-[34px]"
+                                    className="mr-2 h-[34px] w-[34px] transition-all duration-200 hover:scale-110"
                                 >
                                     <Menu className="h-5 w-5" />
                                 </Button>
@@ -164,19 +164,19 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                                     page.url,
                                                     item.href,
                                                 ) && activeItemStyles,
-                                                'h-9 cursor-pointer px-3',
+                                                'h-9 cursor-pointer px-3 transition-all duration-200 hover:scale-105',
                                             )}
                                         >
                                             {item.icon && (
                                                 <Icon
                                                     iconNode={item.icon}
-                                                    className="mr-2 h-4 w-4"
+                                                    className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:scale-110"
                                                 />
                                             )}
                                             {item.title}
                                         </Link>
                                         {isSameUrl(page.url, item.href) && (
-                                            <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"></div>
+                                            <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white animate-slide-down"></div>
                                         )}
                                     </NavigationMenuItem>
                                 ))}
@@ -189,9 +189,9 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="group h-9 w-9 cursor-pointer"
+                                className="group h-9 w-9 cursor-pointer transition-all duration-200 hover:scale-110"
                             >
-                                <Search className="!size-5 opacity-80 group-hover:opacity-100" />
+                                <Search className="!size-5 opacity-80 group-hover:opacity-100 transition-opacity duration-200" />
                             </Button>
                             <div className="hidden lg:flex">
                                 {rightNavItems.map((item) => (
@@ -230,9 +230,9 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
-                                    className="size-10 rounded-full p-1"
+                                    className="size-10 rounded-full p-1 transition-all duration-200 hover:scale-110"
                                 >
-                                    <Avatar className="size-8 overflow-hidden rounded-full">
+                                    <Avatar className="size-8 overflow-hidden rounded-full transition-transform duration-200">
                                         <AvatarImage
                                             src={auth.user.avatar}
                                             alt={auth.user.name}

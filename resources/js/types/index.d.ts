@@ -48,3 +48,33 @@ export interface User {
     };
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export type TransactionStatus = 'pending' | 'refunded' | 'failed' | 'success';
+
+export interface Transaction {
+    id: number;
+    reference: string;
+    type: string;
+    status: TransactionStatus;
+    amount: number | string;
+    network?: string;
+    phone_number?: string;
+    user?: {
+        id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+    };
+    package?: {
+        id: number;
+        name: string;
+        network: string;
+        data_size: string;
+        price: number | string;
+    };
+    vendor_reference?: string;
+    vendor_response?: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+    [key: string]: unknown;
+}

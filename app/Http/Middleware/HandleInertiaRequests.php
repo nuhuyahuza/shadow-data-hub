@@ -59,9 +59,12 @@ class HandleInertiaRequests extends Middleware
     {
         $response = parent::handle($request, $next);
 
-        // If the response is a redirect to login, redirect to phone-login instead
-        if ($response->isRedirect() && $response->getTargetUrl() === url('/login')) {
-            return redirect()->route('phone-login');
+        // Only handle redirect responses (skip JSON responses)
+        if ($response instanceof \Illuminate\Http\RedirectResponse && $response->isRedirect()) {
+            // If the response is a redirect to login, redirect to phone-login instead
+            if ($response->getTargetUrl() === url('/login')) {
+                return redirect()->route('phone-login');
+            }
         }
 
         return $response;

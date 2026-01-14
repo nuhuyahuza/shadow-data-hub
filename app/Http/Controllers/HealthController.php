@@ -44,3 +44,4 @@ class HealthController extends Controller
         return response()->json($status, $httpStatus);
     }
 }
+

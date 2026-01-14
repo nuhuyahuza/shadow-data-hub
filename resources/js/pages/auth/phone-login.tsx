@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
     getNetworkName,
     getNetworkColor,
 } from '@/services/authService';
+import { Wifi } from 'lucide-react';
 
 export default function PhoneLogin() {
     const [phone, setPhone] = useState('');
@@ -33,6 +34,13 @@ export default function PhoneLogin() {
             setNetwork(null);
         }
     };
+
+    // Animate network badge appearance
+    useEffect(() => {
+        if (network) {
+            // Trigger animation
+        }
+    }, [network]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,9 +79,9 @@ export default function PhoneLogin() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <div className="grid gap-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="phone" className="animate-fade-in">Phone Number</Label>
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
                                 +233
                             </span>
                             <Input
@@ -84,30 +92,35 @@ export default function PhoneLogin() {
                                 placeholder="XX XXX XXXX"
                                 required
                                 autoFocus
-                                className="pl-12"
+                                className="pl-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                 disabled={loading}
                             />
                         </div>
                         {network && (
-                            <div className="flex items-center gap-2 text-sm">
+                            <div className="flex items-center gap-2 text-sm animate-slide-down">
+                                <Wifi className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">Network:</span>
                                 <span
-                                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white ${getNetworkColor(network)}`}
+                                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-white shadow-sm transition-all duration-300 ${getNetworkColor(network)} animate-scale-in`}
                                 >
                                     {getNetworkName(network)}
                                 </span>
                             </div>
                         )}
-                        <InputError message={error || undefined} />
+                        {error && (
+                            <div className="animate-slide-down">
+                                <InputError message={error} />
+                            </div>
+                        )}
                     </div>
 
                     <Button
                         type="submit"
-                        className="w-full"
+                        className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         disabled={loading || !phone}
                     >
                         {loading && <Spinner />}
-                        Continue
+                        {loading ? 'Sending...' : 'Continue'}
                     </Button>
                 </div>
             </form>

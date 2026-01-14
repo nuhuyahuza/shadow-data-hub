@@ -47,17 +47,18 @@ export default function RecentTransactions({
     };
 
     return (
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg animate-scale-in" style={{ animationDelay: '200ms' }}>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
-                        <History className="h-5 w-5" />
+                        <History className="h-5 w-5 transition-transform duration-300 hover:rotate-12" />
                         Recent Transactions
                     </CardTitle>
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => router.visit('/transactions')}
+                        className="transition-all duration-200 hover:scale-105"
                     >
                         View All
                     </Button>
@@ -65,15 +66,19 @@ export default function RecentTransactions({
             </CardHeader>
             <CardContent>
                 {transactions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                        No transactions yet
-                    </p>
+                    <div className="text-center py-8 animate-fade-in">
+                        <History className="h-12 w-12 mx-auto text-muted-foreground/30 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                            No transactions yet
+                        </p>
+                    </div>
                 ) : (
                     <div className="space-y-4">
-                        {transactions.map((transaction) => (
+                        {transactions.map((transaction, index) => (
                             <div
                                 key={transaction.id}
-                                className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                                className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0 transition-all duration-200 hover:bg-muted/50 hover:px-2 hover:-mx-2 rounded-md cursor-pointer animate-slide-up"
+                                style={{ animationDelay: `${index * 50}ms` }}
                             >
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
@@ -84,7 +89,7 @@ export default function RecentTransactions({
                                         <Badge
                                             className={`${getStatusColor(
                                                 transaction.status
-                                            )} text-white text-xs`}
+                                            )} text-white text-xs transition-all duration-200`}
                                         >
                                             {transaction.status}
                                         </Badge>

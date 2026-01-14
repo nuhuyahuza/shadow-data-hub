@@ -229,4 +229,130 @@ class GuestPurchaseController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Check payment status by transaction reference.
+     * If transaction has Paystack transaction ID, requery Paystack for latest status.
+     */
+    public function checkStatus(string $reference): JsonResponse
+    {
+        $transaction = Transaction::where('reference', $reference)->first();
+
+        if (! $transaction) {
+            return response()->json([
+                'status' => 'not_found',
+                'message' => 'Transaction not found',
+            ], 404);
+        }
+
+        // If transaction is still pending, verify with Paystack
+        if ($transaction->status === 'pending') {
+            // For mobile money payments, use requery endpoint
+            if ($transaction->vendor_reference) {
+                $requeryResult = $this->directPaymentService->requeryTransaction($transaction->vendor_reference);
+
+                if ($requeryResult['success'] && $requeryResult['status'] === 'success') {
+                    // Update transaction status
+                    $transaction->status = 'success';
+                    $transaction->vendor_response = array_merge(
+                        $transaction->vendor_response ?? [],
+                        ['requery' => $requeryResult['data']]
+                    );
+                    $transaction->save();
+
+                    // If payment successful and transaction is a purchase, deliver data bundle
+                    if ($transaction->type === 'purchase') {
+                        $vendorResult = $this->vendorService->purchaseData($transaction);
+
+                        if (! $vendorResult['success']) {
+                            Log::error('Failed to deliver data bundle after payment requery', [
+                                'transaction_id' => $transaction->id,
+                                'reference' => $transaction->reference,
+                                'vendor_error' => $vendorResult['message'] ?? 'Unknown error',
+                            ]);
+                        }
+                    }
+
+                    return response()->json([
+                        'status' => 'success',
+                        'reference' => $transaction->reference,
+                        'message' => 'Payment successful',
+                    ]);
+                } elseif ($requeryResult['success'] && $requeryResult['status'] === 'failed') {
+                    // Update transaction status to failed
+                    $transaction->status = 'failed';
+                    $transaction->vendor_response = array_merge(
+                        $transaction->vendor_response ?? [],
+                        ['requery' => $requeryResult['data']]
+                    );
+                    $transaction->save();
+
+                    return response()->json([
+                        'status' => 'failed',
+                        'reference' => $transaction->reference,
+                        'message' => 'Payment failed',
+                    ]);
+                }
+            }
+            // For card payments, use verify endpoint
+            else {
+                $verifyResult = $this->directPaymentService->verifyTransaction($transaction->reference);
+
+                if ($verifyResult['success'] && $verifyResult['status'] === 'success') {
+                    // Update transaction status
+                    $transaction->status = 'success';
+                    $transaction->vendor_response = array_merge(
+                        $transaction->vendor_response ?? [],
+                        ['verify' => $verifyResult['data']]
+                    );
+                    // Store Paystack transaction ID if available
+                    if (isset($verifyResult['data']['id'])) {
+                        $transaction->vendor_reference = (string) $verifyResult['data']['id'];
+                    }
+                    $transaction->save();
+
+                    // If payment successful and transaction is a purchase, deliver data bundle
+                    if ($transaction->type === 'purchase') {
+                        $vendorResult = $this->vendorService->purchaseData($transaction);
+
+                        if (! $vendorResult['success']) {
+                            Log::error('Failed to deliver data bundle after payment verification', [
+                                'transaction_id' => $transaction->id,
+                                'reference' => $transaction->reference,
+                                'vendor_error' => $vendorResult['message'] ?? 'Unknown error',
+                            ]);
+                        }
+                    }
+
+                    return response()->json([
+                        'status' => 'success',
+                        'reference' => $transaction->reference,
+                        'message' => 'Payment successful',
+                    ]);
+                } elseif ($verifyResult['success'] && $verifyResult['status'] === 'failed') {
+                    // Update transaction status to failed
+                    $transaction->status = 'failed';
+                    $transaction->vendor_response = array_merge(
+                        $transaction->vendor_response ?? [],
+                        ['verify' => $verifyResult['data']]
+                    );
+                    $transaction->save();
+
+                    return response()->json([
+                        'status' => 'failed',
+                        'reference' => $transaction->reference,
+                        'message' => 'Payment failed',
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'status' => $transaction->status,
+            'reference' => $transaction->reference,
+            'message' => $transaction->status === 'success'
+                ? 'Payment successful'
+                : ($transaction->status === 'failed' ? 'Payment failed' : 'Payment pending'),
+        ]);
+    }
 }

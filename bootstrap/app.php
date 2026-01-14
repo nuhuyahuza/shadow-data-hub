@@ -24,8 +24,16 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
-        // Redirect unauthenticated users to phone-login instead of default login
-        $middleware->redirectGuestsTo(fn () => route('phone-login'));
+        // Redirect unauthenticated users to appropriate login page
+        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
+            // If trying to access admin routes, redirect to admin login
+            if ($request->is('admin/*') || $request->routeIs('admin.*')) {
+                return route('admin-login');
+            }
+
+            // Otherwise, redirect to regular phone login
+            return route('phone-login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Log all exceptions
@@ -36,5 +44,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
+        });
+
+        // Ensure validation exceptions return JSON for API requests
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => 'The given data was invalid.',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
         });
     })->create();

@@ -6,7 +6,7 @@ Add these to your `.env` file:
 
 ```env
 # SMS Provider Configuration
-# Supported: twilio, nexmo, termii
+# Supported: twilio, nexmo, termii, hellio
 SMS_PROVIDER=twilio
 
 # Twilio Configuration
@@ -22,6 +22,13 @@ NEXMO_FROM_NUMBER=your_from_number
 # Termii Configuration (Alternative)
 TERMII_API_KEY=your_api_key
 TERMII_FROM_NUMBER=your_from_number
+
+# Hellio SMS Configuration (Alternative)
+HELLIO_USERNAME=your_hellio_username
+HELLIO_PASSWORD=your_hellio_password
+HELLIO_SENDER_ID=your_sender_id
+HELLIO_RECIPIENT_EMAIL=support@helliomessaging.com
+HELLIO_VERIFY_ENABLED=false
 
 # Payment Gateway Configuration
 # Supported: paystack, flutterwave
@@ -74,4 +81,5 @@ CACHE_STORE=redis
 3. Run `php artisan key:generate`
 4. Run `php artisan migrate`
 5. Run `php artisan db:seed --class=DataPackageSeeder`
+
 

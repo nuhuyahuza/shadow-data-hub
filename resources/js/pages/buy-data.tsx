@@ -1,21 +1,15 @@
 import { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Spinner } from '@/components/ui/spinner';
-import { ShoppingCart } from 'lucide-react';
-import {
-    detectNetwork,
-    getNetworkName,
-    getNetworkColor,
-    formatPhoneForDisplay,
-} from '@/services/authService';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ShoppingCart, Wallet, AlertCircle } from 'lucide-react';
+import { getNetworkName, getNetworkColor } from '@/services/authService';
+import { getWallet } from '@/services/walletService';
+import PurchaseModal from '@/components/purchase-modal';
+import WalletFundingModal from '@/components/wallet-funding-modal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -37,85 +31,101 @@ interface BuyDataProps {
     packages?: DataPackage[];
 }
 
-type Step = 'network' | 'package' | 'phone' | 'confirm' | 'processing' | 'result';
+type Step = 'network' | 'package';
 
 export default function BuyData({ packages: initialPackages }: BuyDataProps) {
     const [step, setStep] = useState<Step>('network');
     const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [detectedNetwork, setDetectedNetwork] = useState<string | null>(null);
     const [packages, setPackages] = useState<DataPackage[]>(initialPackages || []);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+    const [walletBalance, setWalletBalance] = useState<number>(0);
+    const [loadingBalance, setLoadingBalance] = useState(true);
+    const [insufficientFunds, setInsufficientFunds] = useState<{
+        show: boolean;
+        required: number;
+        shortfall: number;
+    }>({ show: false, required: 0, shortfall: 0 });
+
+    // Fetch wallet balance on mount
+    useEffect(() => {
+        const fetchWallet = async () => {
+            try {
+                const wallet = await getWallet();
+                setWalletBalance(Number(wallet.balance));
+            } catch (err) {
+                console.error('Failed to load wallet:', err);
+            } finally {
+                setLoadingBalance(false);
+            }
+        };
+        fetchWallet();
+    }, []);
 
     useEffect(() => {
         if (selectedNetwork) {
-            fetch(`/api/packages/${selectedNetwork}`)
+            fetch(`/api/packages/${selectedNetwork}`, {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            })
                 .then((res) => res.json())
-                .then((data) => setPackages(data))
-                .catch(() => setError('Failed to load packages'));
+                .then((data) => {
+                    setPackages(Array.isArray(data) ? data : data.data || []);
+                })
+                .catch((err) => {
+                    console.error('Failed to load packages:', err);
+                });
         }
     }, [selectedNetwork]);
 
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setPhoneNumber(value);
-        if (value.length >= 3) {
-            const detected = detectNetwork(value);
-            setDetectedNetwork(detected);
-            if (detected && detected !== selectedNetwork) {
-                setError('Phone number network does not match selected network');
-            } else {
-                setError(null);
-            }
-        }
-    };
-
-    const handlePurchase = async () => {
-        if (!selectedPackage || !phoneNumber) {
+    const handlePackageSelect = async (pkg: DataPackage) => {
+        const packagePrice = Number(pkg.price);
+        
+        // Check wallet balance before opening modal
+        if (walletBalance < packagePrice) {
+            setInsufficientFunds({
+                show: true,
+                required: packagePrice,
+                shortfall: packagePrice - walletBalance,
+            });
             return;
         }
 
-        setStep('processing');
-        setLoading(true);
-        setError(null);
+        setInsufficientFunds({ show: false, required: 0, shortfall: 0 });
+        setSelectedPackage(pkg);
+        setIsModalOpen(true);
+    };
 
+    const handleWalletFunded = async () => {
+        // Refresh wallet balance after funding
         try {
-            const response = await fetch('/api/data/purchase', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    package_id: selectedPackage.id,
-                    network: selectedPackage.network,
-                    phone_number: phoneNumber,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Purchase failed');
+            const wallet = await getWallet();
+            setWalletBalance(Number(wallet.balance));
+            setIsWalletModalOpen(false);
+            
+            // If a package was selected, try to open purchase modal again
+            if (selectedPackage) {
+                const packagePrice = Number(selectedPackage.price);
+                if (Number(wallet.balance) >= packagePrice) {
+                    setInsufficientFunds({ show: false, required: 0, shortfall: 0 });
+                    setIsModalOpen(true);
+                }
             }
-
-            setResult({
-                success: true,
-                message: data.message || 'Data bundle purchased successfully',
-            });
-            setStep('result');
         } catch (err) {
-            setResult({
-                success: false,
-                message: err instanceof Error ? err.message : 'Purchase failed',
-            });
-            setStep('result');
-        } finally {
-            setLoading(false);
+            console.error('Failed to refresh wallet:', err);
         }
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        // Optionally reset to network selection after successful purchase
+        // setStep('network');
+        // setSelectedNetwork(null);
+        // setSelectedPackage(null);
     };
 
     const networks = [
@@ -136,20 +146,46 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
+                        {insufficientFunds.show && (
+                            <Alert className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 animate-slide-down">
+                                <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                <AlertTitle className="text-orange-800 dark:text-orange-200">
+                                    Insufficient Wallet Balance
+                                </AlertTitle>
+                                <AlertDescription className="text-orange-700 dark:text-orange-300">
+                                    <div className="space-y-2 mt-2">
+                                        <p>
+                                            You need GHS {insufficientFunds.required.toFixed(2)} to purchase this package, but your current balance is GHS {walletBalance.toFixed(2)}.
+                                        </p>
+                                        <p className="font-semibold">
+                                            Shortfall: GHS {insufficientFunds.shortfall.toFixed(2)}
+                                        </p>
+                                        <Button
+                                            onClick={() => setIsWalletModalOpen(true)}
+                                            className="mt-2 bg-orange-600 hover:bg-orange-700 transition-all duration-200 hover:scale-105"
+                                        >
+                                            <Wallet className="h-4 w-4 mr-2" />
+                                            Fund My Wallet
+                                        </Button>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         {step === 'network' && (
-                            <div className="space-y-4">
+                            <div className="space-y-4 animate-fade-in">
                                 <p className="text-sm text-muted-foreground">
                                     Select a network
                                 </p>
                                 <div className="grid gap-4 md:grid-cols-3">
-                                    {networks.map((network) => (
+                                    {networks.map((network, index) => (
                                         <button
                                             key={network.id}
                                             onClick={() => {
                                                 setSelectedNetwork(network.id);
                                                 setStep('package');
                                             }}
-                                            className={`p-6 rounded-lg border-2 hover:border-primary transition-colors text-left ${network.color} text-white`}
+                                            className={`p-6 rounded-lg border-2 hover:border-primary transition-all duration-200 hover:scale-105 hover:shadow-lg text-left ${network.color} text-white animate-scale-in`}
+                                            style={{ animationDelay: `${index * 100}ms` }}
                                         >
                                             <h3 className="text-xl font-bold">{network.name}</h3>
                                         </button>
@@ -159,7 +195,7 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                         )}
 
                         {step === 'package' && selectedNetwork && (
-                            <div className="space-y-4">
+                            <div className="space-y-4 animate-slide-up">
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm text-muted-foreground">
                                         Select a package
@@ -171,19 +207,21 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                             setStep('network');
                                             setSelectedPackage(null);
                                         }}
+                                        className="transition-all duration-200 hover:scale-105"
                                     >
                                         Change Network
                                     </Button>
                                 </div>
                                 <div className="grid gap-4 md:grid-cols-2">
-                                    {packages.map((pkg) => (
+                                    {packages.map((pkg, index) => (
                                         <Card
                                             key={pkg.id}
-                                            className={`cursor-pointer hover:border-primary ${
+                                            className={`cursor-pointer transition-all duration-200 hover:border-primary hover:scale-105 hover:shadow-md ${
                                                 selectedPackage?.id === pkg.id
-                                                    ? 'border-primary'
+                                                    ? 'border-primary ring-2 ring-primary/20'
                                                     : ''
-                                            }`}
+                                            } animate-scale-in`}
+                                            style={{ animationDelay: `${index * 50}ms` }}
                                             onClick={() => setSelectedPackage(pkg)}
                                         >
                                             <CardContent className="p-4">
@@ -205,153 +243,33 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
                                     ))}
                                 </div>
                                 {selectedPackage && (
-                                    <Button
-                                        className="w-full"
-                                        onClick={() => setStep('phone')}
-                                    >
-                                        Continue
-                                    </Button>
+                                    <div className="animate-slide-up">
+                                        <Button
+                                            className="w-full transition-all duration-200 hover:scale-105"
+                                            onClick={() => handlePackageSelect(selectedPackage)}
+                                        >
+                                            Continue
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {step === 'phone' && selectedPackage && (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">
-                                        Enter phone number
-                                    </p>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setStep('package')}
-                                    >
-                                        Back
-                                    </Button>
-                                </div>
-                                <div className="grid gap-4">
-                                    <div>
-                                        <Label htmlFor="phone">Phone Number</Label>
-                                        <Input
-                                            id="phone"
-                                            type="tel"
-                                            value={phoneNumber}
-                                            onChange={handlePhoneChange}
-                                            placeholder="0244 123 456"
-                                        />
-                                        {detectedNetwork && (
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Detected: {getNetworkName(detectedNetwork)}
-                                            </p>
-                                        )}
-                                        {error && (
-                                            <p className="text-xs text-red-500 mt-1">{error}</p>
-                                        )}
-                                    </div>
-                                    <div className="p-4 bg-muted rounded-lg">
-                                        <p className="text-sm font-medium mb-2">Order Summary</p>
-                                        <div className="space-y-1 text-sm">
-                                            <div className="flex justify-between">
-                                                <span>Network:</span>
-                                                <span>{getNetworkName(selectedPackage.network)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span>Package:</span>
-                                                <span>{selectedPackage.name}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span>Amount:</span>
-                                                <span className="font-bold">
-                                                    GHS {Number(selectedPackage.price).toFixed(2)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        className="w-full"
-                                        onClick={() => setStep('confirm')}
-                                        disabled={!phoneNumber || !!error}
-                                    >
-                                        Continue
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 'confirm' && selectedPackage && (
-                            <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">
-                                    Confirm your purchase
-                                </p>
-                                <Card>
-                                    <CardContent className="p-4 space-y-3">
-                                        <div className="flex justify-between">
-                                            <span>Network:</span>
-                                            <span>{getNetworkName(selectedPackage.network)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Package:</span>
-                                            <span>{selectedPackage.name}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Phone:</span>
-                                            <span>{formatPhoneForDisplay(phoneNumber)}</span>
-                                        </div>
-                                        <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                                            <span>Total:</span>
-                                            <span>GHS {Number(selectedPackage.price).toFixed(2)}</span>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        className="flex-1"
-                                        onClick={() => setStep('phone')}
-                                    >
-                                        Back
-                                    </Button>
-                                    <Button className="flex-1" onClick={handlePurchase}>
-                                        Confirm Purchase
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 'processing' && (
-                            <div className="text-center py-8">
-                                <Spinner className="mx-auto mb-4" />
-                                <p>Processing your request...</p>
-                            </div>
-                        )}
-
-                        {step === 'result' && result && (
-                            <div className="text-center py-8 space-y-4">
-                                <div
-                                    className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-                                        result.success
-                                            ? 'bg-green-100 text-green-600'
-                                            : 'bg-red-100 text-red-600'
-                                    }`}
-                                >
-                                    {result.success ? '✓' : '✗'}
-                                </div>
-                                <p className="font-medium">{result.message}</p>
-                                <Button
-                                    onClick={() => {
-                                        setStep('network');
-                                        setSelectedNetwork(null);
-                                        setSelectedPackage(null);
-                                        setPhoneNumber('');
-                                        setResult(null);
-                                    }}
-                                >
-                                    Buy Another
-                                </Button>
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
+
+                <PurchaseModal
+                    isOpen={isModalOpen}
+                    onClose={handleModalClose}
+                    package={selectedPackage}
+                    onSuccess={handleWalletFunded}
+                />
+
+                <WalletFundingModal
+                    isOpen={isWalletModalOpen}
+                    onClose={() => setIsWalletModalOpen(false)}
+                    onSuccess={handleWalletFunded}
+                />
             </div>
         </AppLayout>
     );

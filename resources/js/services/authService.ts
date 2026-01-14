@@ -61,18 +61,18 @@ export function detectNetwork(phone: string): string | null {
     cleaned = cleaned.startsWith('233') ? cleaned.slice(3) : cleaned;
     cleaned = cleaned.startsWith('0') ? cleaned.slice(1) : cleaned;
     
-    // MTN prefixes: 24, 54, 55, 59
-    if (/^(24|54|55|59)/.test(cleaned)) {
+    // MTN prefixes: 24, 54, 55, 59, 53 (after removing leading 0: 024->24, 053->53, 054->54, 055->55, 059->59)
+    if (/^(24|54|55|59|53)/.test(cleaned)) {
         return 'mtn';
     }
     
-    // Telecel (Vodafone) prefixes: 20, 50
-    if (/^(20|50)/.test(cleaned)) {
+    // Telecel (Vodafone) prefixes: 020, 050 (2-digit: 20, 50)
+    if (/^(020|050|20|50)/.test(cleaned)) {
         return 'telecel';
     }
     
-    // AirtelTigo prefixes: 26, 56, 57
-    if (/^(26|56|57)/.test(cleaned)) {
+    // AirtelTigo prefixes: 026, 056, 057 (2-digit: 26, 56, 57)
+    if (/^(026|056|057|26|56|57)/.test(cleaned)) {
         return 'airteltigo';
     }
     

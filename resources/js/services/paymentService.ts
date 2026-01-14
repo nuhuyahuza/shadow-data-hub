@@ -13,6 +13,15 @@ export interface GuestPurchaseResponse {
     transaction_reference: string;
     payment_url?: string | null;
     public_key?: string; // Paystack public key
+    payment_method?: 'mobile_money' | 'card' | 'direct';
+    paystack_transaction_id?: string | null;
+    display?: {
+        type?: string;
+        message?: string;
+        message_dial?: string;
+        message_prompt?: string;
+        timer?: number;
+    };
     requires_payment?: boolean;
     requires_funding?: boolean;
     current_balance?: number;
@@ -110,6 +119,52 @@ export async function fundWalletAndPurchase(
     }
 
     return purchaseResponse.json();
+}
+
+/**
+ * Purchase data bundle using wallet balance (for authenticated users).
+ */
+export interface WalletPurchaseRequest {
+    package_id: number;
+    network: string;
+    phone_number: string;
+    idempotency_key?: string;
+}
+
+export interface WalletPurchaseResponse {
+    message: string;
+    transaction_reference: string;
+    vendor_reference?: string | null;
+    idempotent?: boolean;
+    status?: 'success' | 'pending';
+    requires_funding?: boolean;
+    current_balance?: number;
+    required_amount?: number;
+    shortfall?: number;
+}
+
+export async function purchaseWithWallet(
+    data: WalletPurchaseRequest
+): Promise<WalletPurchaseResponse> {
+    const response = await fetch(`${API_BASE}/data/purchase`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+            ...(data.idempotency_key && { 'Idempotency-Key': data.idempotency_key }),
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    // 202 Accepted is a valid response for pending/idempotent transactions
+    if (!response.ok && response.status !== 202) {
+        const error = await response.json();
+        throw error;
+    }
+
+    return response.json();
 }
 
 /**
