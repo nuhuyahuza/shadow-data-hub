@@ -6,6 +6,7 @@ use App\Http\Requests\Wallet\FundWalletRequest;
 use App\Models\Transaction;
 use App\Services\DirectPaymentService;
 use App\Services\WalletService;
+use App\Services\VendorService;
 use App\Services\WebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,8 @@ class WalletController extends Controller
     public function __construct(
         protected WalletService $walletService,
         protected WebhookService $webhookService,
-        protected DirectPaymentService $directPaymentService
+        protected DirectPaymentService $directPaymentService,
+        protected VendorService $vendorService
     ) {}
 
     /**
@@ -242,33 +244,46 @@ class WalletController extends Controller
             $paystackTransactionId = $data['id'] ?? null;
 
             // Handle charge.success event for wallet funding
-            if ($event === 'charge.success' && $status === 'success' && $reference && $amount) {
-                // Find transaction by reference (idempotency check)
-                $transaction = Transaction::where('reference', $reference)
-                    ->where('type', 'funding')
-                    ->first();
+            if ($event === 'charge.success' && $status === 'success' && $reference) {
+                $transaction = Transaction::where('reference', $reference)->first();
 
                 if ($transaction) {
-                    // Only credit if transaction is still pending (idempotency)
                     if ($transaction->status === 'pending') {
-                        $this->walletService->credit(
-                            $transaction->user,
-                            (float) $amount,
-                            $reference
-                        );
+                        if ($transaction->type === 'funding' && $amount) {
+                            $this->walletService->credit(
+                                $transaction->user,
+                                (float) $amount,
+                                $reference
+                            );
+                        }
+
+                        $transaction->update([
+                            'status' => $transaction->type === 'funding' ? 'success' : $transaction->status,
+                            'vendor_reference' => $paystackTransactionId ? (string) $paystackTransactionId : $transaction->vendor_reference,
+                            'vendor_response' => $request->all(),
+                        ]);
+
+                        if ($transaction->type === 'purchase') {
+                            $vendorResult = $this->vendorService->purchaseData($transaction);
+
+                            if (! $vendorResult['success']) {
+                                Log::error('Failed to deliver data bundle after payment', [
+                                    'transaction_id' => $transaction->id,
+                                    'reference' => $transaction->reference,
+                                    'vendor_error' => $vendorResult['message'] ?? 'Unknown error',
+                                ]);
+
+                                return response()->json([
+                                    'message' => 'Payment successful but data delivery failed. Please contact support.',
+                                    'transaction_reference' => $transaction->reference,
+                                ], 500);
+                            }
+                        }
                     }
 
-                    // Update transaction status and store Paystack transaction ID
-                    $transaction->update([
-                        'status' => 'success',
-                        'vendor_reference' => $paystackTransactionId ? (string) $paystackTransactionId : $transaction->vendor_reference,
-                        'vendor_response' => $request->all(),
-                    ]);
-
-                    Log::info('Wallet credited via webhook', [
+                    Log::info('Payment processed via webhook', [
                         'transaction_id' => $transaction->id,
-                        'user_id' => $transaction->user_id,
-                        'amount' => $amount,
+                        'type' => $transaction->type,
                         'reference' => $reference,
                     ]);
                 } else {
@@ -277,10 +292,7 @@ class WalletController extends Controller
                     ]);
                 }
             } elseif ($event === 'charge.failed' && isset($data['reference'])) {
-                // Handle failed payment
-                $transaction = Transaction::where('reference', $data['reference'])
-                    ->where('type', 'funding')
-                    ->first();
+                $transaction = Transaction::where('reference', $data['reference'])->first();
 
                 if ($transaction && $transaction->status === 'pending') {
                     $transaction->update([
@@ -288,7 +300,7 @@ class WalletController extends Controller
                         'vendor_response' => $request->all(),
                     ]);
 
-                    Log::info('Wallet funding failed via webhook', [
+                    Log::info('Payment failed via webhook', [
                         'transaction_id' => $transaction->id,
                         'reference' => $data['reference'],
                     ]);
@@ -300,29 +312,51 @@ class WalletController extends Controller
             $amount = $request->input('amount') ?? ($request->input('data.amount') ? ($request->input('data.amount') / 100) : null);
             $status = $request->input('status') ?? $request->input('data.status');
 
-            if ($status === 'success' && $reference && $amount) {
+            if ($status === 'success' && $reference) {
                 $transaction = Transaction::where('reference', $reference)
-                    ->where('type', 'funding')
                     ->where('status', 'pending')
                     ->first();
 
                 if ($transaction) {
-                    $this->walletService->credit(
-                        $transaction->user,
-                        (float) $amount,
-                        $reference
-                    );
+                    if ($transaction->type === 'funding' && $amount) {
+                        $this->walletService->credit(
+                            $transaction->user,
+                            (float) $amount,
+                            $reference
+                        );
 
-                    $transaction->update([
-                        'status' => 'success',
-                        'vendor_response' => $request->all(),
-                    ]);
+                        $transaction->update([
+                            'status' => 'success',
+                            'vendor_response' => $request->all(),
+                        ]);
 
-                    Log::info('Wallet credited via webhook (fallback)', [
-                        'transaction_id' => $transaction->id,
-                        'user_id' => $transaction->user_id,
-                        'amount' => $amount,
-                    ]);
+                        Log::info('Wallet credited via webhook (fallback)', [
+                            'transaction_id' => $transaction->id,
+                            'user_id' => $transaction->user_id,
+                            'amount' => $amount,
+                        ]);
+                    }
+
+                    if ($transaction->type === 'purchase') {
+                        $transaction->update([
+                            'vendor_response' => $request->all(),
+                        ]);
+
+                        $vendorResult = $this->vendorService->purchaseData($transaction);
+
+                        if (! $vendorResult['success']) {
+                            Log::error('Failed to deliver data bundle after payment (fallback)', [
+                                'transaction_id' => $transaction->id,
+                                'reference' => $transaction->reference,
+                                'vendor_error' => $vendorResult['message'] ?? 'Unknown error',
+                            ]);
+
+                            return response()->json([
+                                'message' => 'Payment successful but data delivery failed. Please contact support.',
+                                'transaction_reference' => $transaction->reference,
+                            ], 500);
+                        }
+                    }
                 }
             }
         }

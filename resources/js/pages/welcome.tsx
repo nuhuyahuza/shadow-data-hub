@@ -312,6 +312,7 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                     setSelectedPackage(null);
                 }}
                 package={selectedPackage}
+                useWallet={false}
             />
         </>
     );

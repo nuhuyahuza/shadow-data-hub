@@ -88,6 +88,7 @@ export default function PurchaseModal({
     const user = page.props.auth?.user;
     // Check if user is authenticated and is admin/agent
     const isAdminOrAgent = user && (user.role === 'admin' || user.role === 'agent');
+    const shouldUseWallet = useWallet && !!user && !isAdminOrAgent;
 
     const [step, setStep] = useState<Step>('phone');
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -298,7 +299,7 @@ export default function PurchaseModal({
 
         try {
             // Use wallet-based purchase for authenticated users if useWallet is true
-            if (useWallet) {
+            if (shouldUseWallet) {
                 // Generate idempotency key for wallet purchase
                 const idempotencyKey = `WALLET-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 
