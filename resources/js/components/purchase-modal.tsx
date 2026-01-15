@@ -472,7 +472,10 @@ export default function PurchaseModal({
                 handleClose();
             }
         }}>
-            <DialogContent className="sm:max-w-md backdrop-blur-sm bg-white/95 dark:bg-gray-900/95">
+            <DialogContent
+                className="sm:max-w-md max-h-[85vh] overflow-y-auto pb-6 sm:pb-0 backdrop-blur-sm bg-white/95 dark:bg-gray-900/95"
+                onOpenAutoFocus={(event) => event.preventDefault()}
+            >
                 <DialogHeader>
                     <DialogTitle>
                         {step === 'phone' && 'Complete Your Purchase'}
