@@ -19,12 +19,10 @@ import {
     detectNetwork,
     getNetworkName,
     getNetworkColor,
-    formatPhoneForDisplay,
-} from '@/services/authService';
+    } from '@/services/authService';
 import {
     initiateDirectPayment,
-    fundWalletAndPurchase,
-    redirectToPayment,
+       redirectToPayment,
     type GuestPurchaseRequest,
 } from '@/services/paymentService';
 import { ShoppingCart, Phone, CreditCard } from 'lucide-react';

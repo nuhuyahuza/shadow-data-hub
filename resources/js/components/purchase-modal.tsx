@@ -163,22 +163,22 @@ export default function PurchaseModal({
         }
     }, [isOpen]);
 
-    // Show toast notification when payment processing starts (only for direct payments, not wallet purchases)
-    useEffect(() => {
-        // Only show toast for direct payments (when paymentUrl or paymentDisplay exists)
-        // Wallet purchases are instant and go directly to success
-        if (step === 'payment' && transactionReference && (paymentUrl || paymentDisplay) && !isAdminOrAgent) {
-            // Show toast only once per transaction reference
-            if (toastShownRef.current !== transactionReference) {
-                toastShownRef.current = transactionReference;
-                addToast({
-                    title: 'Payment Processing',
-                    description: 'Your data will be credited shortly. Please wait while we confirm your payment.',
-                    variant: 'default',
-                });
-            }
-        }
-    }, [step, transactionReference, paymentUrl, paymentDisplay, isAdminOrAgent, addToast]);
+    // // Show toast notification when payment processing starts (only for direct payments, not wallet purchases)
+    // useEffect(() => {
+    //     // Only show toast for direct payments (when paymentUrl or paymentDisplay exists)
+    //     // Wallet purchases are instant and go directly to success
+    //     if (step === 'payment' && transactionReference && (paymentUrl || paymentDisplay) && !isAdminOrAgent) {
+    //         // Show toast only once per transaction reference
+    //         if (toastShownRef.current !== transactionReference) {
+    //             toastShownRef.current = transactionReference;
+    //             addToast({
+    //                 title: 'Payment Processing',
+    //                 description: 'Your data will be credited shortly. Please wait while we confirm your payment.',
+    //                 variant: 'default',
+    //             });
+    //         }
+    //     }
+    // }, [step, transactionReference, paymentUrl, paymentDisplay, isAdminOrAgent, addToast]);
 
     // Poll for payment status when in payment step (only for direct payment, not wallet purchases)
     useEffect(() => {
@@ -228,10 +228,6 @@ export default function PurchaseModal({
                             if (onSuccess) {
                                 onSuccess();
                             }
-                            // Auto-close modal after 3 seconds
-                            closeTimeoutRef.current = setTimeout(() => {
-                                handleClose();
-                            }, 3000);
                         } else if (statusData.status === 'failed') {
                             // Stop polling
                             isPollingRef.current = false;
@@ -473,7 +469,7 @@ export default function PurchaseModal({
             }
         }}>
             <DialogContent
-                className="sm:max-w-md backdrop-blur-sm bg-white/95 dark:bg-gray-900/95"
+                className="sm:max-w-md overflow-y-auto backdrop-blur-sm bg-white/95 dark:bg-gray-900/95"
                 onOpenAutoFocus={(event) => event.preventDefault()}
             >
                 <DialogHeader>
