@@ -124,6 +124,15 @@ export default function PhoneLogin() {
                     </Button>
                 </div>
             </form>
+
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+                <p>
+                    Are you an agent?{' '}
+                    <a href="/auth/agent-register" className="text-primary hover:underline font-medium">
+                        Register as agent
+                    </a>
+                </p>
+            </div>
         </AuthLayout>
     );
 }

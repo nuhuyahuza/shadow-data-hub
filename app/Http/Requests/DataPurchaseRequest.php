@@ -28,6 +28,7 @@ class DataPurchaseRequest extends FormRequest
             'phone_number' => ['required', 'string', 'regex:/^(\+?233|0)?[0-9]{9}$/'],
             'payment_method' => ['nullable', 'string', Rule::in(['direct', 'wallet', 'mtn_momo', 'telecel_cash', 'airteltigo_money'])],
             'payment_phone' => ['nullable', 'string', 'regex:/^(\+?233|0)?[0-9]{9}$/'],
+            'store_id' => ['nullable', 'integer', 'exists:stores,id'],
         ];
     }
 

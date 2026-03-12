@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Transaction extends Model
@@ -27,6 +28,7 @@ class Transaction extends Model
         'guest_phone',
         'payment_method',
         'payment_phone',
+        'meta',
     ];
 
     /**
@@ -39,6 +41,7 @@ class Transaction extends Model
         return [
             'amount' => 'decimal:2',
             'vendor_response' => 'array',
+            'meta' => 'array',
         ];
     }
 
@@ -70,6 +73,14 @@ class Transaction extends Model
     public function package(): BelongsTo
     {
         return $this->belongsTo(DataPackage::class, 'package_id');
+    }
+
+    /**
+     * Get the order created from this transaction (for successful purchases).
+     */
+    public function order(): HasOne
+    {
+        return $this->hasOne(Order::class);
     }
 
     /**

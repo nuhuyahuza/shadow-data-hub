@@ -138,6 +138,12 @@ export default function Welcome({ packages: initialPackages, canRegister = true 
                                                 Sign Up
                                             </Link>
                                         )}
+                                        <Link
+                                            href="/auth/agent-register"
+                                            className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] transition-all duration-200 hover:border-[#1915014a] hover:scale-105 dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                                        >
+                                            Become an agent
+                                        </Link>
                                     </>
                                 )}
                             </nav>

@@ -149,6 +149,12 @@ export default function AgentLogin() {
                         phone login
                     </a>
                 </p>
+                <p className="mt-2">
+                    Don&apos;t have an agent account?{' '}
+                    <a href="/auth/agent-register" className="text-primary hover:underline">
+                        Register as agent
+                    </a>
+                </p>
             </div>
         </AuthLayout>
     );

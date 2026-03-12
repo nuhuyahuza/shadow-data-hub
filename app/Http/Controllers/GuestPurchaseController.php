@@ -7,6 +7,7 @@ use App\Models\DataPackage;
 use App\Models\Transaction;
 use App\Services\DirectPaymentService;
 use App\Services\GuestAccountService;
+use App\Services\OrderService;
 use App\Services\VendorService;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,8 @@ class GuestPurchaseController extends Controller
         protected GuestAccountService $guestAccountService,
         protected DirectPaymentService $directPaymentService,
         protected WalletService $walletService,
-        protected VendorService $vendorService
+        protected VendorService $vendorService,
+        protected OrderService $orderService
     ) {}
 
     /**
@@ -140,6 +142,10 @@ class GuestPurchaseController extends Controller
                 'network' => $package->network,
                 'package_id' => $package->id,
                 'phone_number' => $validated['phone_number'],
+                'meta' => [
+                    'source' => 'purchase',
+                    'payment_channel' => 'wallet',
+                ],
             ]
         );
 
@@ -164,6 +170,9 @@ class GuestPurchaseController extends Controller
                 'transaction_reference' => $reference,
             ], 422);
         }
+
+        $transaction->refresh();
+        $this->orderService->createFromTransaction($transaction);
 
         return response()->json([
             'message' => 'Data bundle purchased successfully',

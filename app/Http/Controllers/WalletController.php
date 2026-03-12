@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Wallet\FundWalletRequest;
 use App\Models\Transaction;
 use App\Services\DirectPaymentService;
-use App\Services\WalletService;
+use App\Services\OrderService;
 use App\Services\VendorService;
+use App\Services\WalletService;
 use App\Services\WebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ class WalletController extends Controller
         protected WalletService $walletService,
         protected WebhookService $webhookService,
         protected DirectPaymentService $directPaymentService,
-        protected VendorService $vendorService
+        protected VendorService $vendorService,
+        protected OrderService $orderService
     ) {}
 
     /**
@@ -56,6 +58,10 @@ class WalletController extends Controller
             'amount' => $amount,
             'status' => 'pending',
             'payment_method' => $paymentMethod,
+            'meta' => [
+                'source' => 'funding',
+                'payment_channel' => 'paystack',
+            ],
         ]);
 
         // Initialize payment with Paystack
@@ -258,7 +264,7 @@ class WalletController extends Controller
                         }
 
                         $transaction->update([
-                            'status' => $transaction->type === 'funding' ? 'success' : $transaction->status,
+                            'status' => $transaction->type === 'funding' ? 'success' : 'success',
                             'vendor_reference' => $paystackTransactionId ? (string) $paystackTransactionId : $transaction->vendor_reference,
                             'vendor_response' => $request->all(),
                         ]);
@@ -278,6 +284,8 @@ class WalletController extends Controller
                                     'transaction_reference' => $transaction->reference,
                                 ], 500);
                             }
+
+                            $this->orderService->createFromTransaction($transaction->fresh());
                         }
                     }
 
@@ -356,6 +364,9 @@ class WalletController extends Controller
                                 'transaction_reference' => $transaction->reference,
                             ], 500);
                         }
+
+                        $transaction->update(['status' => 'success']);
+                        $this->orderService->createFromTransaction($transaction->fresh());
                     }
                 }
             }

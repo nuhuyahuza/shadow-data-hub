@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DataPackage extends Model
 {
+    use HasFactory;
     /**
      * The attributes that are mass assignable.
      *
@@ -14,6 +17,7 @@ class DataPackage extends Model
      */
     protected $fillable = [
         'network',
+        'network_id',
         'name',
         'data_size',
         'price',
@@ -42,6 +46,14 @@ class DataPackage extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class, 'package_id');
+    }
+
+    /**
+     * Get the network for the package.
+     */
+    public function networkRelation(): BelongsTo
+    {
+        return $this->belongsTo(Network::class, 'network_id');
     }
 
     /**

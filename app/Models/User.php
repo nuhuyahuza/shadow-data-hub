@@ -21,6 +21,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
         'phone',
         'password',
@@ -62,6 +64,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the store for the user (agents only).
+     */
+    public function store()
+    {
+        return $this->hasOne(Store::class);
+    }
+
+    /**
      * Get the transactions for the user.
      */
     public function transactions()
@@ -70,8 +80,19 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user is an admin.
+     * Get the name attribute (prefer first_name + last_name for agents).
      */
+    public function getNameAttribute(?string $value): string
+    {
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+        $first = $this->attributes['first_name'] ?? '';
+        $last = $this->attributes['last_name'] ?? '';
+
+        return trim("{$first} {$last}") ?: '';
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

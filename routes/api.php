@@ -46,6 +46,11 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
         Route::patch('transactions/{id}/status', [\App\Http\Controllers\Agent\TransactionController::class, 'updateStatus']);
         Route::get('users', [\App\Http\Controllers\Agent\UserController::class, 'index']);
         Route::get('packages', [\App\Http\Controllers\Agent\DataPackageController::class, 'index']);
+        Route::get('store', [\App\Http\Controllers\Agent\StoreController::class, 'show']);
+        Route::post('store', [\App\Http\Controllers\Agent\StoreController::class, 'store']);
+        Route::patch('store', [\App\Http\Controllers\Agent\StoreController::class, 'update']);
+        Route::get('store/pricing', [\App\Http\Controllers\Agent\StoreController::class, 'pricingIndex']);
+        Route::post('store/pricing', [\App\Http\Controllers\Agent\StoreController::class, 'pricingStore']);
     });
 
 // Admin routes (with session middleware for cookie-based auth)
@@ -56,6 +61,9 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
         Route::get('users', [\App\Http\Controllers\Admin\UserController::class, 'index']);
         Route::post('users', [\App\Http\Controllers\Admin\UserController::class, 'store']);
         Route::patch('users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'update']);
+        Route::get('networks', [\App\Http\Controllers\Admin\NetworkController::class, 'index']);
+        Route::post('networks', [\App\Http\Controllers\Admin\NetworkController::class, 'store']);
+        Route::patch('networks/{id}', [\App\Http\Controllers\Admin\NetworkController::class, 'update']);
         Route::get('packages', [\App\Http\Controllers\Admin\DataPackageController::class, 'index']);
         Route::post('packages', [\App\Http\Controllers\Admin\DataPackageController::class, 'store']);
         Route::patch('packages/{id}', [\App\Http\Controllers\Admin\DataPackageController::class, 'update']);

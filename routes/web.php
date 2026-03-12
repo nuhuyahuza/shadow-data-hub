@@ -42,6 +42,8 @@ Route::get('auth/agent-login', function () {
     return Inertia::render('auth/agent-login');
 })->name('agent-login')->middleware('guest');
 
+Route::get('auth/agent-register', [\App\Http\Controllers\Auth\AgentRegistrationController::class, 'show'])->name('agent-register')->middleware('guest');
+
 Route::get('auth/agent/two-factor-challenge', function () {
     return Inertia::render('auth/agent-two-factor-challenge');
 })->name('agent.two-factor.challenge')->middleware('guest');
@@ -70,6 +72,8 @@ Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
     // Agent login (password-based, requires web middleware for session)
     Route::post('agent/login', [\App\Http\Controllers\Auth\AgentLoginController::class, 'login'])->middleware('throttle:5,1');
     Route::post('agent/two-factor-challenge', [\App\Http\Controllers\Auth\AgentLoginController::class, 'twoFactorChallenge'])->middleware('throttle:5,1');
+    // Agent registration (self-signup)
+    Route::post('agent-register', [\App\Http\Controllers\Auth\AgentRegistrationController::class, 'store'])->middleware('throttle:5,1');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -105,6 +109,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('packages', function () {
             return Inertia::render('agent/packages');
         })->name('agent.packages');
+        Route::get('store', function () {
+            return Inertia::render('agent/store');
+        })->name('agent.store');
     });
 
     // Admin routes

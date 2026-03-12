@@ -25,6 +25,13 @@ class DirectPaymentService
         $gateway = config('services.payment.gateway', 'paystack');
 
         // Create pending transaction
+        $meta = [
+            'source' => 'purchase',
+            'payment_channel' => 'paystack',
+        ];
+        if (isset($data['store_id'])) {
+            $meta['store_id'] = $data['store_id'];
+        }
         $transaction = Transaction::create([
             'user_id' => $data['user_id'],
             'reference' => $reference,
@@ -36,6 +43,7 @@ class DirectPaymentService
             'status' => 'pending',
             'payment_method' => $paymentMethod,
             'payment_phone' => $phone,
+            'meta' => $meta,
         ]);
 
         // Initialize Paystack transaction to get authorization URL
