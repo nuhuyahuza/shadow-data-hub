@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        $middleware->web(prepend: [
+            \App\Http\Middleware\ResolveStoreFromSubdomain::class,
+        ]);
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
@@ -31,8 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 return route('admin-login');
             }
 
-            // Otherwise, redirect to regular phone login
-            return route('phone-login');
+            // Otherwise, redirect to agent login (only agents log in)
+            return route('agent-login');
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {

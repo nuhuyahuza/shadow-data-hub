@@ -11,6 +11,7 @@ class Store extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'slug',
         'is_visible',
     ];
 

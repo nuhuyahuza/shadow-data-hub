@@ -38,11 +38,12 @@ interface DataPackage {
 
 interface CheckoutProps {
     package: DataPackage;
+    storeId?: number | null;
 }
 
 type Step = 'details' | 'payment';
 
-export default function Checkout({ package: pkg }: CheckoutProps) {
+export default function Checkout({ package: pkg, storeId }: CheckoutProps) {
     const [step, setStep] = useState<Step>('details');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<string>('');
@@ -105,6 +106,7 @@ export default function Checkout({ package: pkg }: CheckoutProps) {
                 phone_number: phoneNumber,
                 payment_method: paymentMethod as any,
                 payment_phone: paymentMethod !== 'wallet' ? paymentPhone : undefined,
+                store_id: storeId ?? undefined,
             };
 
             let result;

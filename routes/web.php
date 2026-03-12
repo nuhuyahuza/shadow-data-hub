@@ -5,6 +5,33 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
+    $store = request()->attributes->get('store');
+
+    if ($store) {
+        $store->load(['storePackagePricings' => function ($q) {
+            $q->whereHas('dataPackage', fn ($q) => $q->where('is_active', true))
+                ->with('dataPackage');
+        }]);
+        $packages = $store->storePackagePricings->map(function ($pricing) {
+            $pkg = $pricing->dataPackage;
+
+            return [
+                'id' => $pkg->id,
+                'network' => $pkg->network,
+                'name' => $pkg->name,
+                'data_size' => $pkg->data_size,
+                'price' => $pricing->price,
+                'validity' => $pkg->validity,
+                'is_active' => $pkg->is_active,
+            ];
+        })->values()->all();
+
+        return Inertia::render('storefront', [
+            'store' => $store->only('id', 'name', 'slug'),
+            'packages' => $packages,
+        ]);
+    }
+
     $packages = \App\Models\DataPackage::where('is_active', true)
         ->orderBy('network')
         ->orderBy('price')
@@ -51,8 +78,12 @@ Route::get('auth/agent/two-factor-challenge', function () {
 // Guest checkout route
 Route::get('checkout/{packageId}', function ($packageId) {
     $package = \App\Models\DataPackage::findOrFail($packageId);
+    $storeId = request()->query('store_id');
 
-    return Inertia::render('checkout', ['package' => $package]);
+    return Inertia::render('checkout', [
+        'package' => $package,
+        'storeId' => $storeId ? (int) $storeId : null,
+    ]);
 })->name('checkout');
 
 // Payment success callback page (for Paystack redirect - avoids localhost blocking)
@@ -61,6 +92,9 @@ Route::get('payment/success', function () {
 
     return Inertia::render('payment-success', ['reference' => $reference]);
 })->name('payment.success');
+
+// Track order (public, no auth)
+Route::get('track-order', [\App\Http\Controllers\OrderTrackingController::class, 'show'])->name('track-order');
 
 // OTP API endpoints (using web middleware for session support)
 Route::prefix('auth')->middleware('throttle:10,1')->group(function () {

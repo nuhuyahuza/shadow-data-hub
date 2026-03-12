@@ -46,8 +46,8 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        // Use phone-based login instead of email/password
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/phone-login', [
+        // Use agent login as the main login view (only agents log in)
+        Fortify::loginView(fn (Request $request) => Inertia::render('auth/agent-login', [
             'status' => $request->session()->get('status'),
         ]));
 

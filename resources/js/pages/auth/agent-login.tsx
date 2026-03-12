@@ -144,9 +144,9 @@ export default function AgentLogin() {
             </form>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-                <p>Regular users should use{' '}
+                <p>Customer?{' '}
                     <a href="/auth/phone-login" className="text-primary hover:underline">
-                        phone login
+                        Sign in with phone
                     </a>
                 </p>
                 <p className="mt-2">

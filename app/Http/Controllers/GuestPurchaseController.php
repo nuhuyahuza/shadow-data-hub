@@ -79,16 +79,27 @@ class GuestPurchaseController extends Controller
         string $paymentMethod,
         string $reference
     ): JsonResponse {
+        $amount = $package->price;
+        if (! empty($validated['store_id'])) {
+            $pricing = \App\Models\StorePackagePricing::where('store_id', $validated['store_id'])
+                ->where('data_package_id', $package->id)
+                ->first();
+            if ($pricing) {
+                $amount = (float) $pricing->price;
+            }
+        }
+
         // Initiate direct payment
         $paymentResult = $this->directPaymentService->initiatePayment([
             'user_id' => $user->id,
             'reference' => $reference,
-            'amount' => $package->price,
+            'amount' => $amount,
             'payment_phone' => $paymentPhone,
             'payment_method' => $paymentMethod,
             'network' => $package->network,
             'package_id' => $package->id,
             'phone_number' => $validated['phone_number'],
+            'store_id' => $validated['store_id'] ?? null,
         ]);
 
         // Create transaction record

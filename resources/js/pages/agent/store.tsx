@@ -16,6 +16,7 @@ interface Store {
     id: number;
     user_id: string;
     name: string;
+    slug: string | null;
     is_visible: boolean;
     created_at: string;
     store_package_pricings?: Array<{
@@ -29,6 +30,7 @@ interface Store {
 export default function AgentStore() {
     const [store, setStore] = useState<Store | null | undefined>(undefined);
     const [name, setName] = useState('');
+    const [slug, setSlug] = useState('');
     const [isVisible, setIsVisible] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -41,6 +43,7 @@ export default function AgentStore() {
             setStore(data.store ?? null);
             if (data.store) {
                 setName(data.store.name);
+                setSlug(data.store.slug ?? '');
                 setIsVisible(data.store.is_visible);
             }
         } catch {
@@ -63,7 +66,7 @@ export default function AgentStore() {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name || 'My Store' }),
+                body: JSON.stringify({ name: name || 'My Store', slug: slug || undefined }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -89,7 +92,7 @@ export default function AgentStore() {
                 method: 'PATCH',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, is_visible: isVisible }),
+                body: JSON.stringify({ name, slug: slug || undefined, is_visible: isVisible }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -141,6 +144,18 @@ export default function AgentStore() {
                                 required
                             />
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="store-slug">Store URL slug (optional)</Label>
+                            <Input
+                                id="store-slug"
+                                value={slug}
+                                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                placeholder="my-store"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Lowercase letters, numbers, hyphens only. Your store URL: slug.yourdomain.com
+                            </p>
+                        </div>
                         <Button type="submit" disabled={saving}>
                             {saving ? 'Creating...' : 'Create store'}
                         </Button>
@@ -155,6 +170,19 @@ export default function AgentStore() {
                                 onChange={(e) => setName(e.target.value)}
                                 required
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="store-slug">Store URL slug {isVisible && '(required when visible)'}</Label>
+                            <Input
+                                id="store-slug"
+                                value={slug}
+                                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                placeholder="my-store"
+                                required={isVisible}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Lowercase letters, numbers, hyphens only. Your store URL: slug.yourdomain.com
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <input

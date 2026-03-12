@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Domain (for subdomain resolution)
+    |--------------------------------------------------------------------------
+    |
+    | The base domain used to detect agent store subdomains (e.g. example.com).
+    | When the request host is {slug}.example.com, the store with that slug
+    | is resolved. Set APP_DOMAIN in .env or we derive from APP_URL.
+    |
+    */
+    'domain' => env('APP_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
+
+    'reserved_subdomains' => array_filter(explode(',', (string) env('APP_RESERVED_SUBDOMAINS', 'www,api,admin,app'))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

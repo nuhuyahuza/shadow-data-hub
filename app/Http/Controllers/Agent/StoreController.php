@@ -49,6 +49,7 @@ class StoreController extends Controller
         $store = Store::create([
             'user_id' => $user->id,
             'name' => $request->validated()['name'],
+            'slug' => $request->validated()['slug'] ?? null,
             'is_visible' => false,
         ]);
 
@@ -70,10 +71,11 @@ class StoreController extends Controller
         }
 
         $validated = $request->validated();
-        $store->update(array_filter([
+        $store->update([
             'name' => $validated['name'] ?? $store->name,
+            'slug' => array_key_exists('slug', $validated) ? $validated['slug'] : $store->slug,
             'is_visible' => $validated['is_visible'] ?? $store->is_visible,
-        ]));
+        ]);
 
         return response()->json([
             'message' => 'Store updated successfully.',

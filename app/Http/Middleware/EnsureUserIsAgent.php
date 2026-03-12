@@ -25,7 +25,7 @@ class EnsureUserIsAgent
                 ], 401);
             }
 
-            return redirect()->route('phone-login');
+            return redirect()->route('agent-login');
         }
 
         // If authenticated but not agent or admin

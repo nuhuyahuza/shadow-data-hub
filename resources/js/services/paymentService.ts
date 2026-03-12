@@ -8,6 +8,7 @@ export interface GuestPurchaseRequest {
     phone_number: string;
     payment_method?: 'direct' | 'wallet' | 'mtn_momo' | 'telecel_cash' | 'airteltigo_money';
     payment_phone?: string;
+    store_id?: number | null;
 }
 
 export interface GuestPurchaseResponse {

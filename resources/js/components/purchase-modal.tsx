@@ -46,6 +46,7 @@ interface PurchaseModalProps {
     package: DataPackage | null;
     onSuccess?: () => void;
     useWallet?: boolean; // If true, use wallet-based purchase for authenticated users
+    storeId?: number | null; // When buying from agent storefront, pass store id for order attribution
 }
 
 type Step = 'phone' | 'payment' | 'success';
@@ -83,6 +84,7 @@ export default function PurchaseModal({
     package: pkg,
     onSuccess,
     useWallet = true,
+    storeId,
 }: PurchaseModalProps) {
     const { addToast } = useToast();
     const page = usePage<SharedData>();
@@ -377,6 +379,7 @@ export default function PurchaseModal({
                     network: pkg.network,
                     phone_number: phoneNumber,
                     payment_method: 'direct',
+                    store_id: storeId ?? undefined,
                 };
 
                 const result = await initiateDirectPayment(purchaseData);

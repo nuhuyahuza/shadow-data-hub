@@ -61,9 +61,9 @@ class HandleInertiaRequests extends Middleware
 
         // Only handle redirect responses (skip JSON responses)
         if ($response instanceof \Illuminate\Http\RedirectResponse && $response->isRedirect()) {
-            // If the response is a redirect to login, redirect to phone-login instead
+            // If the response is a redirect to login, redirect to agent-login instead
             if ($response->getTargetUrl() === url('/login')) {
-                return redirect()->route('phone-login');
+                return redirect()->route('agent-login');
             }
         }
 
