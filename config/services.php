@@ -67,6 +67,11 @@ return [
             'recipient_email' => env('HELLIO_RECIPIENT_EMAIL'),
             'verify_enabled' => env('HELLIO_VERIFY_ENABLED', false),
         ],
+        'arkesel' => [
+            'api_key' => env('ARKESEL_API_KEY'),
+            'sender_id' => env('ARKESEL_SENDER_ID'),
+            'from' => env('ARKESEL_FROM_NUMBER'),
+        ],
     ],
 
     /*

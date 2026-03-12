@@ -137,14 +137,15 @@ class OtpService
     protected function sendSms(string $phone, string $code): void
     {
         $provider = config('services.sms.provider', 'twilio');
-        $message = "Your OTP code is: {$code}. Valid for 5 minutes.";
-
+        $message = "Your OTP code is: {$code}. Valid for 2 minutes.";
+        Log::info('Sending SMS via provider: ' . $provider);
         try {
             match ($provider) {
                 'twilio' => $this->sendViaTwilio($phone, $message),
                 'nexmo' => $this->sendViaNexmo($phone, $message),
                 'termii' => $this->sendViaTermii($phone, $message),
                 'hellio' => $this->sendViaHellio($phone, $message),
+                'arkesel' => $this->sendViaArkesel($phone, $message),
                 default => $this->sendViaLog($phone, $code),
             };
         } catch (\Exception $e) {
@@ -342,6 +343,96 @@ class OtpService
         ]);
     }
 
+    /**
+     * Send SMS via Arkesel.
+     */
+    protected function sendViaArkesel(string $phone, string $message): void
+    {
+        $config = config('services.sms.arkesel');
+        $fields = [
+            'expiry'=> 2,
+            'length'=> 6,
+            'medium'=> 'sms',
+            'message'=> $message,
+            'number'=>$phone,
+            'sender_id'=>$config['sender_id'],
+            'type'=>'numeric',
+        ];
+        $postvars = '';
+        foreach($fields as $key=>$value) {
+            $postvars .= $key . "=" . $value . "&";
+        }
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://sms.arkesel.com/api/otp/generate',
+            CURLOPT_HTTPHEADER => array('api-key: ' . $config['api_key']),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => 1,
+            CURLOPT_POSTFIELDS => $postvars,
+        ));
+        $response = curl_exec($curl);
+        curl_close($curl);
+        Log::info('Arkesel SMS sent successfully', [
+            'phone' => $phone,
+            'response' => $response,
+        ]);
+    }
+    protected function verifyViaArkesel(string $phone, string $code): bool
+    {
+        $config = config('services.sms.arkesel');
+        if (! $config['api_key']) {
+            Log::error('Arkesel verification failed: credentials not configured');
+            return false;
+        }
+        $fields = [
+            'otp' => $code,
+            'number'=>$phone,
+        ];
+        $postvars = '';
+        foreach($fields as $key=>$value) {
+            $postvars .= $key . "=" . $value . "&";
+        }
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://sms.arkesel.com/api/otp/verify',
+            CURLOPT_HTTPHEADER => array('api-key: ' . $config['api_key']),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => 1,
+            CURLOPT_POSTFIELDS => $postvars,
+        ));
+        $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($curl);
+        curl_close($curl);
+        if ($curlError) {
+            Log::error('Arkesel OTP verification cURL error', [
+                'phone' => $phone,
+                'error' => $curlError,
+            ]);
+            return false;
+        }
+        if ($httpCode !== 200) {
+            Log::error('Arkesel OTP verification failed', [
+                'phone' => $phone,
+                'http_code' => $httpCode,
+                'response' => $response,
+            ]);
+            return false;
+        }
+        $response = json_decode($response, true);
+        if ($response['status'] === 'success') {
+            Log::info('Arkesel OTP verification successful', [
+                'phone' => $phone,
+                'response' => $response,
+            ]);
+            return true;
+        }
+        Log::error('Arkesel OTP verification failed', [
+            'phone' => $phone,
+            'response' => $response,
+        ]);
+        return false;
+    }
     /**
      * Fallback: Log OTP for development.
      */
