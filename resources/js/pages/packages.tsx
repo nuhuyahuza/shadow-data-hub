@@ -5,6 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -28,11 +29,10 @@ export default function Packages() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/packages', {
+        apiFetch('/api/packages', {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
             },
         })
             .then(async (res) => {

@@ -5,6 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -40,11 +41,10 @@ export default function Transactions() {
             filter === 'all'
                 ? '/api/transactions'
                 : `/api/transactions?status=${filter}`;
-        fetch(url, {
+        apiFetch(url, {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
             },
         })
             .then((res) => res.json())

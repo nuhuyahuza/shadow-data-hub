@@ -22,6 +22,7 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
 import { useToast } from '@/components/ui/toast';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -72,11 +73,10 @@ export default function AdminPurchases() {
                         ? `/api/admin/transactions?type=purchase&per_page=100&page=${page}`
                         : `/api/admin/transactions?type=purchase&status=${statusFilter}&per_page=100&page=${page}`;
 
-                    const response = await fetch(url, {
+                    const response = await apiFetch(url, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 
@@ -108,14 +108,11 @@ export default function AdminPurchases() {
 
     const handleStatusUpdate = async (transactionId: number, newStatus: string) => {
         try {
-            const response = await fetch(`/api/admin/transactions/${transactionId}/status`, {
+            const response = await apiFetch(`/api/admin/transactions/${transactionId}/status`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify({ status: newStatus }),
             });
 
@@ -150,11 +147,10 @@ export default function AdminPurchases() {
 
     const handleViewDetails = async (transaction: Transaction) => {
         try {
-            const response = await fetch(`/api/admin/transactions/${transaction.id}`, {
+            const response = await apiFetch(`/api/admin/transactions/${transaction.id}`, {
                 credentials: 'include',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
                 },
             });
 

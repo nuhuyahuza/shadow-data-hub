@@ -1,5 +1,7 @@
 const API_BASE = '/api';
 
+import { apiFetch } from './api';
+
 export interface GuestPurchaseRequest {
     package_id: number;
     network: string;
@@ -42,14 +44,8 @@ export interface PaymentResponse {
 export async function initiateDirectPayment(
     data: GuestPurchaseRequest
 ): Promise<GuestPurchaseResponse> {
-    const response = await fetch(`${API_BASE}/guest/purchase`, {
+    const response = await apiFetch(`${API_BASE}/guest/purchase`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-        credentials: 'include',
         body: JSON.stringify({
             ...data,
             payment_method: data.payment_method || 'direct',
@@ -71,14 +67,8 @@ export async function fundWalletAndPurchase(
     data: GuestPurchaseRequest & { amount: number }
 ): Promise<GuestPurchaseResponse> {
     // First, fund the wallet
-    const fundResponse = await fetch(`${API_BASE}/wallet/fund`, {
+    const fundResponse = await apiFetch(`${API_BASE}/wallet/fund`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-        credentials: 'include',
         body: JSON.stringify({
             amount: data.amount,
             payment_method: data.payment_method || 'mtn_momo',
@@ -97,14 +87,8 @@ export async function fundWalletAndPurchase(
     // In production, you'd wait for webhook confirmation
 
     // Then purchase with wallet
-    const purchaseResponse = await fetch(`${API_BASE}/guest/purchase`, {
+    const purchaseResponse = await apiFetch(`${API_BASE}/guest/purchase`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-        credentials: 'include',
         body: JSON.stringify({
             package_id: data.package_id,
             network: data.network,
@@ -146,15 +130,11 @@ export interface WalletPurchaseResponse {
 export async function purchaseWithWallet(
     data: WalletPurchaseRequest
 ): Promise<WalletPurchaseResponse> {
-    const response = await fetch(`${API_BASE}/data/purchase`, {
+    const response = await apiFetch(`${API_BASE}/data/purchase`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
             ...(data.idempotency_key && { 'Idempotency-Key': data.idempotency_key }),
         },
-        credentials: 'include',
         body: JSON.stringify(data),
     });
 

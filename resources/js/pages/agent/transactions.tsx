@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -38,11 +39,10 @@ export default function AgentTransactions() {
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/agent/transactions?per_page=100&page=${page}`, {
+                    const response = await apiFetch(`/api/agent/transactions?per_page=100&page=${page}`, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 
@@ -79,14 +79,11 @@ export default function AgentTransactions() {
         }
 
         try {
-            const response = await fetch(`/api/agent/transactions/${transactionId}/fulfill`, {
+            const response = await apiFetch(`/api/agent/transactions/${transactionId}/fulfill`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
             });
 
             if (response.ok) {
@@ -231,11 +228,10 @@ export default function AgentTransactions() {
 
     const handleViewDetails = async (transaction: Transaction) => {
         try {
-            const response = await fetch(`/api/agent/transactions/${transaction.id}`, {
+            const response = await apiFetch(`/api/agent/transactions/${transaction.id}`, {
                 credentials: 'include',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
                 },
             });
 
@@ -250,14 +246,11 @@ export default function AgentTransactions() {
     };
 
     const handleStatusUpdateInModal = async (transactionId: number, newStatus: TransactionStatus) => {
-            const response = await fetch(`/api/agent/transactions/${transactionId}/status`, {
+            const response = await apiFetch(`/api/agent/transactions/${transactionId}/status`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify({ status: newStatus }),
             });
 

@@ -5,6 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Package } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -37,11 +38,10 @@ export default function AgentPackages() {
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/agent/packages?per_page=100&page=${page}`, {
+                    const response = await apiFetch(`/api/agent/packages?per_page=100&page=${page}`, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 

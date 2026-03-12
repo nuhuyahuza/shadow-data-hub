@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { History, CheckCircle2, XCircle, Clock, Eye, RefreshCw } from 'lucide-react';
 import TransactionDetailsModal from '@/components/admin/TransactionDetailsModal';
+import { apiFetch } from '@/services/api';
 import { useToast } from '@/components/ui/toast';
 import {
     DropdownMenu,
@@ -39,11 +40,10 @@ export default function AdminTransactions() {
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/admin/transactions?per_page=100&page=${page}`, {
+                    const response = await apiFetch(`/api/admin/transactions?per_page=100&page=${page}`, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 
@@ -198,11 +198,10 @@ export default function AdminTransactions() {
 
     const handleViewDetails = async (transaction: Transaction) => {
         try {
-            const response = await fetch(`/api/admin/transactions/${transaction.id}`, {
+            const response = await apiFetch(`/api/admin/transactions/${transaction.id}`, {
                 credentials: 'include',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
                 },
             });
 
@@ -217,14 +216,11 @@ export default function AdminTransactions() {
     };
 
     const handleStatusUpdateInModal = async (transactionId: number, newStatus: TransactionStatus) => {
-        const response = await fetch(`/api/admin/transactions/${transactionId}/status`, {
+        const response = await apiFetch(`/api/admin/transactions/${transactionId}/status`, {
             method: 'PATCH',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             },
-            credentials: 'include',
             body: JSON.stringify({ status: newStatus }),
         });
 
@@ -253,14 +249,11 @@ export default function AdminTransactions() {
         refundingRef.current.add(transactionId);
 
         try {
-            const response = await fetch(`/api/admin/transactions/${transactionId}/refund`, {
+            const response = await apiFetch(`/api/admin/transactions/${transactionId}/refund`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
             });
 
             if (!response.ok) {

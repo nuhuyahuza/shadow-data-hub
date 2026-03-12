@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import InputError from '@/components/input-error';
 import AuthLayout from '@/layouts/auth-layout';
 import { Shield } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 export default function AdminLogin() {
     const [email, setEmail] = useState('');
@@ -25,13 +26,8 @@ export default function AdminLogin() {
         setLoading(true);
 
         try {
-            const response = await fetch('/auth/admin/login', {
+            const response = await apiFetch('/auth/admin/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                credentials: 'include',
                 body: JSON.stringify({
                     email,
                     password,
@@ -54,8 +50,7 @@ export default function AdminLogin() {
             if (data.two_factor) {
                 router.visit(data.redirect || '/auth/admin/two-factor-challenge');
             } else {
-                // Redirect to admin dashboard
-                router.visit(data.redirect || '/admin/dashboard');
+                window.location.href = data.redirect || '/admin/dashboard';
             }
         } catch (err) {
             setErrors({ email: 'An unexpected error occurred. Please try again.' });

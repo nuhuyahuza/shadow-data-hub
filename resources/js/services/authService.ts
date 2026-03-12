@@ -1,6 +1,8 @@
 // Use web routes for OTP (session-based auth) instead of API routes
 const API_BASE = '';
 
+import { apiFetch } from './api';
+
 export interface SendOtpResponse {
     message: string;
     expires_at: string;
@@ -109,14 +111,8 @@ export function getNetworkColor(network: string | null): string {
  * Send OTP to phone number.
  */
 export async function sendOtp(phone: string): Promise<SendOtpResponse> {
-    const response = await fetch(`${API_BASE}/auth/otp/send`, {
+    const response = await apiFetch(`${API_BASE}/auth/otp/send`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-        credentials: 'include', // Include cookies for session
         body: JSON.stringify({ phone }),
     });
 
@@ -135,14 +131,8 @@ export async function verifyOtp(
     phone: string,
     code: string
 ): Promise<VerifyOtpResponse> {
-    const response = await fetch(`${API_BASE}/auth/otp/verify`, {
+    const response = await apiFetch(`${API_BASE}/auth/otp/verify`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-        credentials: 'include', // Include cookies for session - CRITICAL for authentication
         body: JSON.stringify({ phone, code }),
     });
 

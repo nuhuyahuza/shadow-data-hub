@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { apiFetch } from '@/services/api';
 
 interface TwoFactorSetupData {
     svg: string;
@@ -12,7 +13,7 @@ interface TwoFactorSecretKey {
 export const OTP_MAX_LENGTH = 6;
 
 const fetchJson = async <T>(url: string): Promise<T> => {
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
         headers: { Accept: 'application/json' },
     });
 

@@ -28,6 +28,7 @@ import {
     type WalletPurchaseRequest,
 } from '@/services/paymentService';
 import { useToast } from '@/components/ui/toast';
+import { apiFetch } from '@/services/api';
 import { type SharedData } from '@/types';
 
 interface DataPackage {
@@ -202,7 +203,7 @@ export default function PurchaseModal({
                 }
 
                 try {
-                    const checkResponse = await fetch(
+                    const checkResponse = await apiFetch(
                         `/api/guest/payment/status/${transactionReference}`,
                         {
                             credentials: 'include',

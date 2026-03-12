@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import InputError from '@/components/input-error';
 import AuthLayout from '@/layouts/auth-layout';
 import { Shield, Key } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 export default function AdminTwoFactorChallenge() {
     const [code, setCode] = useState('');
@@ -25,13 +25,8 @@ export default function AdminTwoFactorChallenge() {
         setLoading(true);
 
         try {
-            const response = await fetch('/auth/admin/two-factor-challenge', {
+            const response = await apiFetch('/auth/admin/two-factor-challenge', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                credentials: 'include',
                 body: JSON.stringify({
                     code: useRecoveryCode ? null : code,
                     recovery_code: useRecoveryCode ? recoveryCode : null,
@@ -51,8 +46,7 @@ export default function AdminTwoFactorChallenge() {
 
             const data = await response.json();
 
-            // Redirect to admin dashboard
-            router.visit(data.redirect || '/admin/dashboard');
+            window.location.href = data.redirect || '/admin/dashboard';
         } catch (error) {
             console.error('2FA verification error:', error);
             setErrors({ code: 'An unexpected error occurred. Please try again.' });

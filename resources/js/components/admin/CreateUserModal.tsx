@@ -21,6 +21,7 @@ import { Spinner } from '@/components/ui/spinner';
 import InputError from '@/components/input-error';
 import { useToast } from '@/components/ui/toast';
 import { UserPlus } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 interface CreateUserModalProps {
     isOpen: boolean;
@@ -46,14 +47,11 @@ export default function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUs
         setLoading(true);
 
         try {
-            const response = await fetch('/api/admin/users', {
+            const response = await apiFetch('/api/admin/users', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify(formData),
             });
 

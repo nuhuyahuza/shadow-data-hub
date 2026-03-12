@@ -21,6 +21,7 @@ import { Spinner } from '@/components/ui/spinner';
 import InputError from '@/components/input-error';
 import { useToast } from '@/components/ui/toast';
 import { Package } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 interface CreatePackageModalProps {
     isOpen: boolean;
@@ -48,14 +49,11 @@ export default function CreatePackageModal({ isOpen, onClose, onSuccess }: Creat
         setLoading(true);
 
         try {
-            const response = await fetch('/api/admin/packages', {
+            const response = await apiFetch('/api/admin/packages', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify({
                     ...formData,
                     price: parseFloat(formData.price),

@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import InputError from '@/components/input-error';
 import AuthLayout from '@/layouts/auth-layout';
 import { UserCheck } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 export default function AgentLogin() {
     const [email, setEmail] = useState('');
@@ -25,13 +26,8 @@ export default function AgentLogin() {
         setLoading(true);
 
         try {
-            const response = await fetch('/auth/agent/login', {
+            const response = await apiFetch('/auth/agent/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                credentials: 'include',
                 body: JSON.stringify({
                     email,
                     password,
@@ -54,8 +50,7 @@ export default function AgentLogin() {
             if (data.two_factor) {
                 router.visit(data.redirect || '/auth/agent/two-factor-challenge');
             } else {
-                // Redirect to agent transactions
-                router.visit(data.redirect || '/agent/transactions');
+                window.location.href = data.redirect || '/agent/transactions';
             }
         } catch (err) {
             setErrors({ email: 'An unexpected error occurred. Please try again.' });

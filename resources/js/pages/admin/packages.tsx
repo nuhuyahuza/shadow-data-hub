@@ -5,7 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import DataTable, { type ColumnDef } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Package, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import { Package, Plus, CheckCircle2, XCircle, MoreHorizontal } from 'lucide-react';
 import CreatePackageModal from '@/components/admin/CreatePackageModal';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -14,7 +14,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -49,11 +49,10 @@ export default function AdminPackages() {
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/admin/packages?per_page=100&page=${page}`, {
+                    const response = await apiFetch(`/api/admin/packages?per_page=100&page=${page}`, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 
@@ -86,14 +85,11 @@ export default function AdminPackages() {
 
     const handleToggleActive = async (packageId: number, currentStatus: boolean) => {
         try {
-            const response = await fetch(`/api/admin/packages/${packageId}`, {
+            const response = await apiFetch(`/api/admin/packages/${packageId}`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify({ is_active: !currentStatus }),
             });
 
@@ -228,11 +224,10 @@ export default function AdminPackages() {
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/admin/packages?per_page=100&page=${page}`, {
+                    const response = await apiFetch(`/api/admin/packages?per_page=100&page=${page}`, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 

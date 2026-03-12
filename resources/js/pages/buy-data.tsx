@@ -10,6 +10,7 @@ import { getNetworkName, getNetworkColor } from '@/services/authService';
 import { getWallet } from '@/services/walletService';
 import PurchaseModal from '@/components/purchase-modal';
 import WalletFundingModal from '@/components/wallet-funding-modal';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -65,11 +66,10 @@ export default function BuyData({ packages: initialPackages }: BuyDataProps) {
 
     useEffect(() => {
         if (selectedNetwork) {
-            fetch(`/api/packages/${selectedNetwork}`, {
+            apiFetch(`/api/packages/${selectedNetwork}`, {
                 credentials: 'include',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
                 },
             })
                 .then((res) => res.json())

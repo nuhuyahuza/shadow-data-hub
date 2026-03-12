@@ -13,6 +13,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -42,11 +43,10 @@ export default function AdminAgents() {
                 let hasMore = true;
 
                 while (hasMore) {
-                    const response = await fetch(`/api/admin/users?role=agent&per_page=100&page=${page}`, {
+                    const response = await apiFetch(`/api/admin/users?role=agent&per_page=100&page=${page}`, {
                         credentials: 'include',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
                     });
 
@@ -80,14 +80,11 @@ export default function AdminAgents() {
 
     const handleRoleUpdate = async (userId: string, newRole: string) => {
         try {
-            const response = await fetch(`/api/admin/users/${userId}`, {
+            const response = await apiFetch(`/api/admin/users/${userId}`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify({ role: newRole }),
             });
 

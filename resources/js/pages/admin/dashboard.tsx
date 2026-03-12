@@ -10,6 +10,7 @@ import RecentActivity from '@/components/admin/RecentActivity';
 import QuickActions from '@/components/admin/QuickActions';
 import SystemStatus from '@/components/admin/SystemStatus';
 import { Spinner } from '@/components/ui/spinner';
+import { apiFetch } from '@/services/api';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -55,12 +56,10 @@ export default function AdminDashboard() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/admin/dashboard', {
+        apiFetch('/api/admin/dashboard', {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
             },
         })
             .then(async (res) => {

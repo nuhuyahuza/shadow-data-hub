@@ -1,5 +1,7 @@
 const API_BASE = '/api';
 
+import { apiFetch } from './api';
+
 export interface FundWalletRequest {
     amount: number;
     payment_method: 'mtn_momo' | 'telecel_cash' | 'airteltigo_money';
@@ -40,16 +42,8 @@ export interface TransactionStatusResponse {
 export async function fundWallet(
     data: FundWalletRequest
 ): Promise<FundWalletResponse> {
-    const response = await fetch(`${API_BASE}/wallet/fund`, {
+    const response = await apiFetch(`${API_BASE}/wallet/fund`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN':
-                (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
-                    ?.content || '',
-        },
-        credentials: 'include',
         body: JSON.stringify(data),
     });
 
@@ -67,16 +61,8 @@ export async function fundWallet(
 export async function checkTransactionStatus(
     reference: string
 ): Promise<TransactionStatusResponse> {
-    const response = await fetch(`${API_BASE}/wallet/status/${reference}`, {
+    const response = await apiFetch(`${API_BASE}/wallet/status/${reference}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN':
-                (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
-                    ?.content || '',
-        },
-        credentials: 'include',
     });
 
     if (!response.ok) {
@@ -95,16 +81,8 @@ export async function getWallet(): Promise<{
     total_funded: number | string;
     total_spent: number | string;
 }> {
-    const response = await fetch(`${API_BASE}/wallet`, {
+    const response = await apiFetch(`${API_BASE}/wallet`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN':
-                (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
-                    ?.content || '',
-        },
-        credentials: 'include',
     });
 
     if (!response.ok) {
