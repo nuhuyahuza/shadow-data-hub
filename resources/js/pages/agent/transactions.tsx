@@ -73,7 +73,7 @@ export default function AgentTransactions() {
         fetchAllTransactions();
     }, []);
 
-    const handleFulfill = async (transactionId: number) => {
+    const handleFulfill = async (transactionId: string) => {
         if (!confirm('Are you sure you want to fulfill this transaction?')) {
             return;
         }
@@ -245,7 +245,7 @@ export default function AgentTransactions() {
         }
     };
 
-    const handleStatusUpdateInModal = async (transactionId: number, newStatus: TransactionStatus) => {
+    const handleStatusUpdateInModal = async (transactionId: string, newStatus: TransactionStatus) => {
             const response = await apiFetch(`/api/agent/transactions/${transactionId}/status`, {
                 method: 'PATCH',
                 headers: {

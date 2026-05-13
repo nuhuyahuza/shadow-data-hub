@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 test('email verification screen can be rendered', function () {
     $user = User::factory()->unverified()->create();
@@ -53,7 +54,7 @@ test('email is not verified with invalid user id', function () {
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => 123, 'hash' => sha1($user->email)]
+        ['id' => (string) Str::uuid(), 'hash' => sha1($user->email)]
     );
 
     $this->actingAs($user)->get($verificationUrl);

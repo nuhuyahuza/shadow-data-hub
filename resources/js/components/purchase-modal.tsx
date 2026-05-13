@@ -32,7 +32,7 @@ import { apiFetch } from '@/services/api';
 import { type SharedData } from '@/types';
 
 interface DataPackage {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;
@@ -46,7 +46,7 @@ interface PurchaseModalProps {
     package: DataPackage | null;
     onSuccess?: () => void;
     useWallet?: boolean; // If true, use wallet-based purchase for authenticated users
-    storeId?: number | null; // When buying from agent storefront, pass store id for order attribution
+    storeId?: string | null; // When buying from agent storefront, pass store id for order attribution
 }
 
 type Step = 'phone' | 'payment' | 'success';

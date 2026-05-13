@@ -26,8 +26,8 @@ interface TransactionDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
     transaction: Transaction | null;
-    onStatusUpdate?: (transactionId: number, newStatus: TransactionStatus) => Promise<void>;
-    onRefund?: (transactionId: number) => Promise<void>;
+    onStatusUpdate?: (transactionId: string, newStatus: TransactionStatus) => Promise<void>;
+    onRefund?: (transactionId: string) => Promise<void>;
     apiPrefix?: 'admin' | 'agent';
 }
 

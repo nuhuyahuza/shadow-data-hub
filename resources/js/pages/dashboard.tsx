@@ -23,7 +23,7 @@ interface DashboardProps {
     totalDataPurchased: number | string;
     totalTransactions: number;
     recentTransactions: Array<{
-        id: number;
+        id: string;
         reference: string;
         type: string;
         network: string | null;

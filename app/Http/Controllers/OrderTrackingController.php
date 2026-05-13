@@ -51,7 +51,7 @@ class OrderTrackingController extends Controller
 
         // When on subdomain (store resolved), only allow tracking orders for that store
         $store = $request->attributes->get('store');
-        if ($store && (int) $order->store_id !== (int) $store->id) {
+        if ($store && (string) $order->store_id !== (string) $store->id) {
             return Inertia::render('track-order', [
                 'order' => null,
                 'error' => 'Order not found.',

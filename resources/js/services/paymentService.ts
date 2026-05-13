@@ -3,12 +3,12 @@ const API_BASE = '/api';
 import { apiFetch } from './api';
 
 export interface GuestPurchaseRequest {
-    package_id: number;
+    package_id: string;
     network: string;
     phone_number: string;
     payment_method?: 'direct' | 'wallet' | 'mtn_momo' | 'telecel_cash' | 'airteltigo_money';
     payment_phone?: string;
-    store_id?: number | null;
+    store_id?: string | null;
 }
 
 export interface GuestPurchaseResponse {
@@ -110,7 +110,7 @@ export async function fundWalletAndPurchase(
  * Purchase data bundle using wallet balance (for authenticated users).
  */
 export interface WalletPurchaseRequest {
-    package_id: number;
+    package_id: string;
     network: string;
     phone_number: string;
     idempotency_key?: string;

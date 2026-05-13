@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StorePackagePricing extends Model
 {
+    use HasUuids;
+
     protected $table = 'store_package_pricing';
 
     protected $fillable = [

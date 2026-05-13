@@ -40,11 +40,13 @@ it('agent can update store visibility', function () {
     $store = Store::create([
         'user_id' => $this->agent->id,
         'name' => 'My Store',
+        'slug' => 'my-store-visibility',
         'is_visible' => false,
     ]);
 
     $response = $this->actingAs($this->agent)->patchJson('/api/agent/store', [
         'name' => 'My Store',
+        'slug' => 'my-store-visibility',
         'is_visible' => true,
     ]);
 

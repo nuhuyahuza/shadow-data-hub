@@ -22,7 +22,7 @@ class StorePackagePricingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'data_package_id' => ['required', 'integer', 'exists:data_packages,id'],
+            'data_package_id' => ['required', 'uuid', 'exists:data_packages,id'],
             'price' => ['required', 'numeric', 'min:0'],
         ];
     }

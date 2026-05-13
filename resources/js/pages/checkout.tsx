@@ -28,7 +28,7 @@ import {
 import { ShoppingCart, Phone, CreditCard } from 'lucide-react';
 
 interface DataPackage {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;
@@ -38,7 +38,7 @@ interface DataPackage {
 
 interface CheckoutProps {
     package: DataPackage;
-    storeId?: number | null;
+    storeId?: string | null;
 }
 
 type Step = 'details' | 'payment';

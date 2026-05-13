@@ -12,7 +12,7 @@ export interface SendOtpResponse {
 export interface VerifyOtpResponse {
     message: string;
     user: {
-        id: number;
+        id: string;
         name: string;
         phone: string;
         role: string;

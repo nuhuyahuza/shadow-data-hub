@@ -82,7 +82,7 @@ it('processes purchase webhook and delivers data bundle on the unified endpoint'
     ]);
 
     $user = User::factory()->create();
-    $package = DataPackage::create([
+    $package = DataPackage::factory()->create([
         'network' => 'mtn',
         'name' => 'Test Package',
         'data_size' => '1GB',

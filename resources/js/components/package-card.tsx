@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { getNetworkName, getNetworkColor } from '@/services/authService';
 
 export interface PackageCardPackage {
-    id: number;
+    id: string;
     name: string;
     data_size: string;
     network: string;

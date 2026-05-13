@@ -16,22 +16,22 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Store {
-    id: number;
+    id: string;
     user_id: string;
     name: string;
     slug: string | null;
     is_visible: boolean;
     created_at: string;
     store_package_pricings?: Array<{
-        id: number;
-        data_package_id: number;
+        id: string;
+        data_package_id: string;
         price: number | string;
         data_package?: { name: string; network: string };
     }>;
 }
 
 interface DataPackage {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;
@@ -42,8 +42,8 @@ interface DataPackage {
 }
 
 interface StorePricingItem {
-    id: number;
-    data_package_id: number;
+    id: string;
+    data_package_id: string;
     price: number | string;
     data_package?: { name: string; network: string };
 }
@@ -117,7 +117,7 @@ export default function AgentStore() {
     }, [store, loadPackagesAndPricing]);
 
     const handleSavePrice = useCallback(
-        async (dataPackageId: number, price: number) => {
+        async (dataPackageId: string, price: number) => {
             const res = await apiFetch('/api/agent/store/pricing', {
                 method: 'POST',
                 credentials: 'include',
@@ -129,7 +129,7 @@ export default function AgentStore() {
             setStorePricing((prev) => {
                 const existing = prev.find((p) => p.data_package_id === dataPackageId);
                 if (existing) return prev.map((p) => (p.data_package_id === dataPackageId ? { ...p, price } : p));
-                return [...prev, { id: data.pricing?.id ?? 0, data_package_id: dataPackageId, price }];
+                return [...prev, { id: data.pricing?.id ?? '', data_package_id: dataPackageId, price }];
             });
         },
         []

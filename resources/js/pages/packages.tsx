@@ -15,7 +15,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface DataPackage {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;

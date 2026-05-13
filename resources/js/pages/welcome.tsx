@@ -9,7 +9,7 @@ import { getNetworkName, getNetworkColor } from '@/services/authService';
 import PurchaseModal from '@/components/purchase-modal';
 
 interface DataPackage {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;

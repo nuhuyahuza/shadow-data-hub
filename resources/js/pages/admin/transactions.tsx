@@ -30,7 +30,7 @@ export default function AdminTransactions() {
     const [loading, setLoading] = useState(true);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-    const refundingRef = useRef<Set<number>>(new Set());
+    const refundingRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         const fetchAllTransactions = async () => {
@@ -215,7 +215,7 @@ export default function AdminTransactions() {
         }
     };
 
-    const handleStatusUpdateInModal = async (transactionId: number, newStatus: TransactionStatus) => {
+    const handleStatusUpdateInModal = async (transactionId: string, newStatus: TransactionStatus) => {
         const response = await apiFetch(`/api/admin/transactions/${transactionId}/status`, {
             method: 'PATCH',
             headers: {
@@ -240,7 +240,7 @@ export default function AdminTransactions() {
         }
     };
 
-    const handleRefund = async (transactionId: number) => {
+    const handleRefund = async (transactionId: string) => {
         // Prevent duplicate refund attempts
         if (refundingRef.current.has(transactionId)) {
             return;

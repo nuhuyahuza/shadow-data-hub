@@ -2,9 +2,9 @@
 
 use App\Models\DataPackage;
 use App\Models\Order;
+use App\Models\Store;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\Store;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class)->group('track-order');
@@ -19,7 +19,7 @@ it('shows track order page without search when no reference given', function () 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('track-order')
-        ->has('searched', false)
+        ->where('searched', false)
         ->where('order', null)
         ->where('error', null)
     );
@@ -31,7 +31,7 @@ it('returns order not found when reference does not match any transaction', func
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('track-order')
-        ->has('searched', true)
+        ->where('searched', true)
         ->where('order', null)
         ->where('error', 'Order not found.')
     );
@@ -76,7 +76,7 @@ it('returns order when reference matches a purchase transaction and order exists
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('track-order')
-        ->has('searched', true)
+        ->where('searched', true)
         ->where('error', null)
         ->has('order')
         ->where('order.reference', 'TXN-TRACK-001')
@@ -120,7 +120,7 @@ it('returns order not found when phone param does not match order phone', functi
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->has('searched', true)
+        ->where('searched', true)
         ->where('order', null)
         ->where('error', 'Order not found.')
     );
@@ -156,12 +156,12 @@ it('returns order when phone param matches order phone', function () {
 
     $response = $this->get(route('track-order', [
         'reference' => 'TXN-PHONE-MATCH',
-        'phone' => '0241234567',
+        'phone' => '233241234567',
     ]));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->has('searched', true)
+        ->where('searched', true)
         ->where('error', null)
         ->where('order.reference', 'TXN-PHONE-MATCH')
     );
@@ -213,7 +213,7 @@ it('returns order not found when on subdomain and order belongs to different sto
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->has('searched', true)
+        ->where('searched', true)
         ->where('order', null)
         ->where('error', 'Order not found.')
     );

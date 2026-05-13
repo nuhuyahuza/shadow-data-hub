@@ -9,13 +9,13 @@ import { PackageCard } from '@/components/package-card';
 import { getNetworkName, getNetworkColor } from '@/services/authService';
 
 interface StoreInfo {
-    id: number;
+    id: string;
     name: string;
     slug: string | null;
 }
 
 interface DataPackage {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;
@@ -242,7 +242,7 @@ export default function Storefront({ store, packages: initialPackages }: Storefr
 
 interface StorefrontPackageCardProps {
     pkg: DataPackage;
-    storeId: number;
+    storeId: string;
     isAuthenticated: boolean;
 }
 

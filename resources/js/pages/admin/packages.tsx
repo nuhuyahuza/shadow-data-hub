@@ -24,7 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface DataPackage extends Record<string, unknown> {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;
@@ -83,7 +83,7 @@ export default function AdminPackages() {
         fetchAllPackages();
     }, []);
 
-    const handleToggleActive = async (packageId: number, currentStatus: boolean) => {
+    const handleToggleActive = async (packageId: string, currentStatus: boolean) => {
         try {
             const response = await apiFetch(`/api/admin/packages/${packageId}`, {
                 method: 'PATCH',

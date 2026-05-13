@@ -32,7 +32,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Transaction extends Record<string, unknown> {
-    id: number;
+    id: string;
     reference: string;
     user?: {
         id: string;
@@ -41,7 +41,7 @@ interface Transaction extends Record<string, unknown> {
         phone?: string;
     };
     package?: {
-        id: number;
+        id: string;
         name: string;
         network: string;
     };
@@ -106,7 +106,7 @@ export default function AdminPurchases() {
         fetchAllPurchases();
     }, [statusFilter]);
 
-    const handleStatusUpdate = async (transactionId: number, newStatus: string) => {
+    const handleStatusUpdate = async (transactionId: string, newStatus: string) => {
         try {
             const response = await apiFetch(`/api/admin/transactions/${transactionId}/status`, {
                 method: 'PATCH',
@@ -164,7 +164,7 @@ export default function AdminPurchases() {
         }
     };
 
-    const handleStatusUpdateInModal = async (transactionId: number, newStatus: string) => {
+    const handleStatusUpdateInModal = async (transactionId: string, newStatus: string) => {
         await handleStatusUpdate(transactionId, newStatus);
         // Refresh the transaction details after update
         const updatedTransaction = purchases.find((t) => t.id === transactionId);

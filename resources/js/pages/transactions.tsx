@@ -15,7 +15,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Transaction {
-    id: number;
+    id: string;
     reference: string;
     type: string;
     network: string | null;
@@ -24,7 +24,7 @@ interface Transaction {
     status: string;
     created_at: string;
     package?: {
-        id: number;
+        id: string;
         name: string;
         network: string;
         data_size: string;

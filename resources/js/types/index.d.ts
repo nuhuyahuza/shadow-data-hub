@@ -31,7 +31,7 @@ export interface SharedData {
 }
 
 export interface User {
-    id: number;
+    id: string;
     name: string;
     email: string | null;
     phone: string | null;
@@ -52,7 +52,7 @@ export interface User {
 export type TransactionStatus = 'pending' | 'refunded' | 'failed' | 'success';
 
 export interface Transaction {
-    id: number;
+    id: string;
     reference: string;
     type: string;
     status: TransactionStatus;
@@ -66,7 +66,7 @@ export interface Transaction {
         phone?: string;
     };
     package?: {
-        id: number;
+        id: string;
         name: string;
         network: string;
         data_size: string;

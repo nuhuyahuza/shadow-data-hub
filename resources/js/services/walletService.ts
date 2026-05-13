@@ -10,7 +10,7 @@ export interface FundWalletRequest {
 export interface FundWalletResponse {
     success: boolean;
     reference: string;
-    transaction_id: number;
+    transaction_id: string;
     payment_url?: string | null;
     public_key?: string | null;
     payment_method?: string;

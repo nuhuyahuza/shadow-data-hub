@@ -59,7 +59,7 @@ class DataPurchaseController extends Controller
     /**
      * Resolve selling price from store or system (never trust frontend amount).
      */
-    protected function resolvePrice($user, DataPackage $package, ?int $storeId): float
+    protected function resolvePrice($user, DataPackage $package, ?string $storeId): float
     {
         if ($storeId) {
             $store = Store::where('id', $storeId)->where('user_id', $user->id)->where('is_visible', true)->first();
@@ -94,7 +94,7 @@ class DataPurchaseController extends Controller
             'phone_number' => $validated['phone_number'],
         ];
         if (! empty($validated['store_id'])) {
-            $data['store_id'] = (int) $validated['store_id'];
+            $data['store_id'] = $validated['store_id'];
         }
 
         $result = $this->directPaymentService->initiatePayment($data);
@@ -174,7 +174,7 @@ class DataPurchaseController extends Controller
                 'payment_channel' => 'wallet',
             ];
             if (! empty($validated['store_id'])) {
-                $meta['store_id'] = (int) $validated['store_id'];
+                $meta['store_id'] = $validated['store_id'];
             }
 
             $deducted = $this->walletService->deduct(

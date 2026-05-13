@@ -5,7 +5,7 @@ import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 
 interface Transaction {
-    id: number;
+    id: string;
     reference: string;
     type: string;
     network: string | null;

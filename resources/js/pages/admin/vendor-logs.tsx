@@ -15,8 +15,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface VendorLog extends Record<string, unknown> {
-    id: number;
-    transaction_id: number | null;
+    id: string;
+    transaction_id: string | null;
     endpoint: string;
     method: string;
     request_body: string | null;
@@ -24,7 +24,7 @@ interface VendorLog extends Record<string, unknown> {
     status_code: number | null;
     created_at: string;
     transaction?: {
-        id: number;
+        id: string;
         reference: string;
     };
 }

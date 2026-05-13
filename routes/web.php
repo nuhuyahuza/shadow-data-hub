@@ -82,7 +82,7 @@ Route::get('checkout/{packageId}', function ($packageId) {
 
     return Inertia::render('checkout', [
         'package' => $package,
-        'storeId' => $storeId ? (int) $storeId : null,
+        'storeId' => $storeId ? (string) $storeId : null,
     ]);
 })->name('checkout');
 

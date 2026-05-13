@@ -15,7 +15,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface DataPackage extends Record<string, unknown> {
-    id: number;
+    id: string;
     network: string;
     name: string;
     data_size: string;

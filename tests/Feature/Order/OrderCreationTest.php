@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\DataPackage;
-use App\Models\Network;
 use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\User;
@@ -25,6 +24,15 @@ it('creates order when wallet purchase succeeds', function () {
         'balance' => 100.00,
         'total_funded' => 100.00,
         'total_spent' => 0.00,
+    ]);
+
+    Transaction::create([
+        'user_id' => $user->id,
+        'reference' => 'FUND-'.uniqid(),
+        'type' => 'funding',
+        'amount' => 100.00,
+        'status' => 'success',
+        'payment_method' => 'card',
     ]);
 
     $package = DataPackage::factory()->create([
