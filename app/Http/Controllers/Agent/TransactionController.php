@@ -10,11 +10,26 @@ use Illuminate\Http\Request;
 class TransactionController extends Controller
 {
     /**
-     * List all transactions (read-only for agents).
+     * List transactions visible to the authenticated agent.
+     *
+     * Agents should only see:
+     * - Their own wallet-related transactions (user_id match)
+     * - Transactions associated with their store (meta->store_id match)
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Transaction::with(['user', 'package'])->latest();
+        $agent = $request->user();
+        $storeId = $agent->store->id ?? null;
+
+        $query = Transaction::with(['user', 'package'])
+            ->latest()
+            ->where(function ($q) use ($agent, $storeId) {
+                $q->where('user_id', $agent->id);
+
+                if ($storeId) {
+                    $q->orWhere('meta->store_id', $storeId);
+                }
+            });
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
@@ -38,7 +53,7 @@ class TransactionController extends Controller
      */
     public function show(Request $request, string $id): JsonResponse
     {
-        $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+        $transaction = $this->findAgentTransaction($request, $id);
 
         return response()->json($transaction);
     }
@@ -52,7 +67,7 @@ class TransactionController extends Controller
             'status' => ['required', 'in:pending,success,failed,cancelled'],
         ]);
 
-        $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+        $transaction = $this->findAgentTransaction($request, $id);
 
         $transaction->update([
             'status' => $validated['status'],
@@ -77,7 +92,7 @@ class TransactionController extends Controller
      */
     public function fulfill(Request $request, string $id): JsonResponse
     {
-        $transaction = Transaction::with(['user', 'package'])->findOrFail($id);
+        $transaction = $this->findAgentTransaction($request, $id);
 
         if ($transaction->status !== 'pending') {
             return response()->json([
@@ -109,5 +124,24 @@ class TransactionController extends Controller
             'message' => 'Transaction fulfilled successfully',
             'transaction' => $transaction->fresh(['user', 'package']),
         ]);
+    }
+
+    /**
+     * Find a transaction that belongs to the authenticated agent (by user or store).
+     */
+    protected function findAgentTransaction(Request $request, string $id): Transaction
+    {
+        $agent = $request->user();
+        $storeId = $agent->store->id ?? null;
+
+        return Transaction::with(['user', 'package'])
+            ->where(function ($q) use ($agent, $storeId) {
+                $q->where('user_id', $agent->id);
+
+                if ($storeId) {
+                    $q->orWhere('meta->store_id', $storeId);
+                }
+            })
+            ->findOrFail($id);
     }
 }

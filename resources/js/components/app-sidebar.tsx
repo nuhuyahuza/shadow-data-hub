@@ -105,11 +105,6 @@ export function AppSidebar() {
             icon: ShoppingCart,
         },
         {
-            title: 'Users',
-            href: '/agent/users',
-            icon: Users,
-        },
-        {
             title: 'Packages',
             href: '/agent/packages',
             icon: Package,

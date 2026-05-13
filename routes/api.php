@@ -44,7 +44,6 @@ Route::middleware(['web', 'auth', 'throttle:120,1', \App\Http\Middleware\EnsureU
         Route::get('transactions/{id}', [\App\Http\Controllers\Agent\TransactionController::class, 'show']);
         Route::post('transactions/{id}/fulfill', [\App\Http\Controllers\Agent\TransactionController::class, 'fulfill']);
         Route::patch('transactions/{id}/status', [\App\Http\Controllers\Agent\TransactionController::class, 'updateStatus']);
-        Route::get('users', [\App\Http\Controllers\Agent\UserController::class, 'index']);
         Route::get('packages', [\App\Http\Controllers\Agent\DataPackageController::class, 'index']);
         Route::get('store', [\App\Http\Controllers\Agent\StoreController::class, 'show']);
         Route::post('store', [\App\Http\Controllers\Agent\StoreController::class, 'store']);

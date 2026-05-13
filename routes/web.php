@@ -137,9 +137,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchases', function () {
             return Inertia::render('agent/purchases');
         })->name('agent.purchases');
-        Route::get('users', function () {
-            return Inertia::render('agent/users');
-        })->name('agent.users');
         Route::get('packages', function () {
             return Inertia::render('agent/packages');
         })->name('agent.packages');
