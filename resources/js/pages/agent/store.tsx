@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Store as StoreIcon } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Store as StoreIcon, ChevronDown, ChevronRight, Package } from 'lucide-react';
 import { apiFetch } from '@/services/api';
+import { PackageCard } from '@/components/package-card';
+import { getNetworkName } from '@/services/authService';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Store', href: '/agent/store' },
@@ -27,6 +30,34 @@ interface Store {
     }>;
 }
 
+interface DataPackage {
+    id: number;
+    network: string;
+    name: string;
+    data_size: string;
+    price: number | string;
+    vendor_price: number | string;
+    validity: string;
+    is_active: boolean;
+}
+
+interface StorePricingItem {
+    id: number;
+    data_package_id: number;
+    price: number | string;
+    data_package?: { name: string; network: string };
+}
+
+const NETWORKS = ['mtn', 'telecel', 'airteltigo'] as const;
+
+function groupPackagesByNetwork(packages: DataPackage[]): Record<string, DataPackage[]> {
+    const grouped: Record<string, DataPackage[]> = {};
+    for (const network of NETWORKS) {
+        grouped[network] = packages.filter((p) => p.network === network);
+    }
+    return grouped;
+}
+
 export default function AgentStore() {
     const [store, setStore] = useState<Store | null | undefined>(undefined);
     const [name, setName] = useState('');
@@ -35,6 +66,9 @@ export default function AgentStore() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [packages, setPackages] = useState<DataPackage[]>([]);
+    const [storePricing, setStorePricing] = useState<StorePricingItem[]>([]);
+    const [pricingLoading, setPricingLoading] = useState(false);
 
     const fetchStore = async () => {
         try {
@@ -56,6 +90,50 @@ export default function AgentStore() {
     useEffect(() => {
         fetchStore();
     }, []);
+
+    const loadPackagesAndPricing = useCallback(async () => {
+        if (!store) return;
+        setPricingLoading(true);
+        try {
+            const [packagesRes, pricingRes] = await Promise.all([
+                apiFetch('/api/agent/packages?per_page=100&page=1', { credentials: 'include' }),
+                apiFetch('/api/agent/store/pricing', { credentials: 'include' }),
+            ]);
+            const packagesData = await packagesRes.json();
+            const pricingData = await pricingRes.json();
+            const list: DataPackage[] = packagesData.data?.data ?? packagesData.data ?? [];
+            setPackages(Array.isArray(list) ? list : []);
+            setStorePricing(Array.isArray(pricingData.pricing) ? pricingData.pricing : []);
+        } catch {
+            setPackages([]);
+            setStorePricing([]);
+        } finally {
+            setPricingLoading(false);
+        }
+    }, [store]);
+
+    useEffect(() => {
+        if (store) loadPackagesAndPricing();
+    }, [store, loadPackagesAndPricing]);
+
+    const handleSavePrice = useCallback(
+        async (dataPackageId: number, price: number) => {
+            const res = await apiFetch('/api/agent/store/pricing', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data_package_id: dataPackageId, price }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message ?? 'Failed to save price');
+            setStorePricing((prev) => {
+                const existing = prev.find((p) => p.data_package_id === dataPackageId);
+                if (existing) return prev.map((p) => (p.data_package_id === dataPackageId ? { ...p, price } : p));
+                return [...prev, { id: data.pricing?.id ?? 0, data_package_id: dataPackageId, price }];
+            });
+        },
+        []
+    );
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -200,20 +278,61 @@ export default function AgentStore() {
                     </form>
                 )}
 
-                {store?.store_package_pricings && store.store_package_pricings.length > 0 && (
+                {store && (
                     <div className="rounded-lg border p-6">
-                        <h2 className="mb-4 text-lg font-medium">Your package pricing</h2>
-                        <ul className="space-y-2">
-                            {store.store_package_pricings.map((p) => (
-                                <li key={p.id} className="flex justify-between text-sm">
-                                    <span>{p.data_package?.name ?? `Package #${p.data_package_id}`}</span>
-                                    <span>GHS {Number(p.price).toFixed(2)}</span>
-                                </li>
-                            ))}
-                        </ul>
-                        <p className="mt-4 text-sm text-muted-foreground">
-                            Add or edit pricing via the Packages page or API: POST /api/agent/store/pricing
-                        </p>
+                        <h2 className="mb-4 flex items-center gap-2 text-lg font-medium">
+                            <Package className="h-5 w-5" />
+                            Package pricing
+                        </h2>
+                        {pricingLoading ? (
+                            <p className="text-sm text-muted-foreground">Loading packages...</p>
+                        ) : (
+                            (() => {
+                                const grouped = groupPackagesByNetwork(packages);
+                                return (
+                                    <div className="flex flex-col gap-2">
+                                        {NETWORKS.map((network) => {
+                                            const list = grouped[network] ?? [];
+                                            if (list.length === 0) return null;
+                                            return (
+                                                <Collapsible key={network} defaultOpen={network === 'mtn'}>
+                                                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/50 px-4 py-3 text-left font-medium transition-colors hover:bg-muted dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50">
+                                                        <span className="flex items-center gap-2">
+                                                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform [[data-state=open]_&]:rotate-90" />
+                                                            {getNetworkName(network)}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {list.length} package{list.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent>
+                                                        <div className="space-y-4 pt-4">
+                                                            {list.map((pkg) => {
+                                                                const storePrice = storePricing.find((p) => p.data_package_id === pkg.id)?.price ?? null;
+                                                                return (
+                                                                    <PackageCard
+                                                                        key={pkg.id}
+                                                                        package={pkg}
+                                                                        variant="configLarge"
+                                                                        storePrice={storePrice != null ? Number(storePrice) : null}
+                                                                        onSavePrice={async (price) => {
+                                                                            await handleSavePrice(pkg.id, price);
+                                                                        }}
+                                                                    />
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </CollapsibleContent>
+                                                </Collapsible>
+                                            );
+                                        })}
+                                        {packages.length === 0 && (
+                                            <p className="text-sm text-muted-foreground">No packages available to price.</p>
+                                        )}
+                                    </div>
+                                );
+                            })()
+                        )}
                     </div>
                 )}
             </div>

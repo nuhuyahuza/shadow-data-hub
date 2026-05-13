@@ -18,6 +18,7 @@ import {
     LayoutGrid,
     ShoppingCart,
     Package,
+    Store,
     Wallet,
     History,
     Shield,
@@ -105,9 +106,9 @@ export function AppSidebar() {
             icon: ShoppingCart,
         },
         {
-            title: 'Packages',
-            href: '/agent/packages',
-            icon: Package,
+            title: 'Store',
+            href: '/agent/store',
+            icon: Store,
         },
     ];
 
